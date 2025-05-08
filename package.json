@@ -1,0 +1,25 @@
+{
+  "name": "boltzmann-cfd-simulator",
+  "version": "1.0.0",
+  "description": "A web-based Lattice Boltzmann method CFD simulator",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "mkdir -p public && cp index.html public/ && go build -o cfd_simulator main.go"
+  },
+  "keywords": [
+    "cfd",
+    "lattice-boltzmann",
+    "fluid-dynamics",
+    "simulation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.17.3"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

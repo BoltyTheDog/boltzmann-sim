@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boltzmann CFD Simulator</title>
+    <!-- KaTeX for math formulas -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.15.3/katex.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.15.3/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.15.3/contrib/auto-render.min.js"></script>
+    <!-- Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <!-- Custom styles -->
+    <style>
+        :root {
+            --dark-bg: #111111;
+            --panel-bg: #1e1e1e;
+            --border-color: #333333;
+            --text-primary: #f5f5f5;
+            --text-secondary: #aaaaaa;
+            --accent-color: #555555;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--dark-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        header {
+            padding: 40px 0 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 30px;
+        }
+        
+        h1, h2, h3, h4 {
+            margin-top: 0;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        h3 {
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+        }
+        
+        p {
+            margin-bottom: 20px;
+        }
+        
+        .parameter-slider {
+            width: 100%;
+            height: 5px;
+            background: var(--border-color);
+            border-radius: 2px;
+            -webkit-appearance: none;
+            margin-bottom: 20px;
+        }
+        
+        .parameter-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--text-primary);
+            cursor: pointer;
+        }
+        
+        .parameter-slider::-moz-range-thumb {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--text-primary);
+            cursor: pointer;
+            border: none;
+        }
+        
+        .panel {
+            background-color: var(--panel-bg);
+            border-radius: 5px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .simulation-container {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            background-color: #000000;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+        
+        #simulation-gif {
+            max-width: 100%;
+            max-height: 100%;
+            display: none;
+        }
+        
+        .progress-container {
+            width: 80%;
+            height: 8px;
+            background-color: var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background-color: var(--text-primary);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        nav {
+            display: flex;
+            margin-bottom: 30px;
+        }
+        
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 10px 20px;
+            margin-right: 5px;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+        
+        .nav-link:hover {
+            color: var(--text-primary);
+        }
+        
+        .nav-link.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--text-primary);
+        }
+        
+        .button {
+            background-color: var(--accent-color);
+            color: var(--text-primary);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        
+        .button:hover:not(:disabled) {
+            background-color: #666666;
+        }
+        
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .parameter-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .formula-card {
+            background-color: #262626;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px 0;
+            margin-top: 40px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+        
+        @media (max-width: 768px) {
+            .parameter-group {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .button {
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Boltzmann CFD Simulator</h1>
+            <p>Computational Fluid Dynamics using the Lattice Boltzmann Method</p>
+        </div>
+    </header>
+    
+    <div class="container">
+        <nav>
+            <a href="#simulator" class="nav-link active">Simulator</a>
+            <a href="#parameters" class="nav-link">Parameters</a>
+            <a href="#theory" class="nav-link">Theory</a>
+            <a href="#formulas" class="nav-link">Formulas</a>
+            <a href="#about" class="nav-link">About</a>
+        </nav>
+        
+        <section id="simulator">
+            <div class="panel">
+                <h2>Simulation</h2>
+                
+                <div class="simulation-container">
+                    <img id="simulation-gif" alt="CFD Simulation" />
+                    <div id="loading-indicator" class="text-center">
+                        <p style="margin-bottom: 20px;">Running Simulation...</p>
+                        <div class="progress-container">
+                            <div id="progress-bar" class="progress-bar"></div>
+                        </div>
+                        <p id="progress-text" style="margin-top: 20px;">0%</p>
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between;">
+                    <button id="run-button" class="button">Run Simulation</button>
+                    <button id="download-button" class="button" style="display: none;">Download GIF</button>
+                </div>
+            </div>
+        </section>
+        
+        <section id="parameters">
+            <div class="panel">
+                <h2>Simulation Parameters</h2>
+                
+                <div>
+                    <h3>Canvas Dimensions</h3>
+                    <div class="parameter-group">
+                        <div>
+                            <label for="width">Width: <span id="width-value">1200</span>px</label>
+                            <input type="range" id="width" min="400" max="2400" value="1200" step="100" class="parameter-slider">
+                        </div>
+                        <div>
+                            <label for="height">Height: <span id="height-value">480</span>px</label>
+                            <input type="range" id="height" min="200" max="1200" value="480" step="40" class="parameter-slider">
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>Simulation Grid</h3>
+                    <div class="parameter-group">
+                        <div>
+                            <label for="xdim">X-Dimension: <span id="xdim-value">600</span></label>
+                            <input type="range" id="xdim" min="200" max="1200" value="600" step="50" class="parameter-slider">
+                            <p>Higher values = more detail, slower simulation</p>
+                        </div>
+                        <div>
+                            <label for="ydim">Y-Dimension: <span id="ydim-value">240</span></label>
+                            <input type="range" id="ydim" min="100" max="600" value="240" step="20" class="parameter-slider">
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>Physics Parameters</h3>
+                    <div class="parameter-group">
+                        <div>
+                            <label for="velocity">Velocity: <span id="velocity-value">0.10</span></label>
+                            <input type="range" id="velocity" min="0.01" max="0.30" value="0.10" step="0.01" class="parameter-slider">
+                            <p>Initial fluid velocity</p>
+                        </div>
+                        <div>
+                            <label for="viscosity">Viscosity: <span id="viscosity-value">0.020</span></label>
+                            <input type="range" id="viscosity" min="0.001" max="0.100" value="0.020" step="0.001" class="parameter-slider">
+                            <p>Higher = more "sticky" fluid</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>Simulation Control</h3>
+                    <div class="parameter-group">
+                        <div>
+                            <label for="timeStepsPerFrame">Time Steps Per Frame: <span id="timeStepsPerFrame-value">20</span></label>
+                            <input type="range" id="timeStepsPerFrame" min="5" max="50" value="20" step="5" class="parameter-slider">
+                        </div>
+                        <div>
+                            <label for="totalTimeSteps">Total Time Steps: <span id="totalTimeSteps-value">20000</span></label>
+                            <input type="range" id="totalTimeSteps" min="1000" max="50000" value="20000" step="1000" class="parameter-slider">
+                            <p>Higher = longer simulation</p>
+                        </div>
+                        <div>
+                            <label for="gifDelay">GIF Delay: <span id="gifDelay-value">2</span></label>
+                            <input type="range" id="gifDelay" min="1" max="10" value="2" step="1" class="parameter-slider">
+                            <p>Higher = slower playback</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button id="reset-defaults" class="button">Reset to Defaults</button>
+                </div>
+            </div>
+        </section>
+        
+        <section id="theory">
+            <div class="panel">
+                <h2>Theory</h2>
+                
+                <div>
+                    <h3>The Lattice Boltzmann Method</h3>
+                    <p>
+                        The Lattice Boltzmann Method (LBM) is a computational fluid dynamics technique used to simulate fluid flows. Instead of solving the Navier-Stokes equations directly, LBM models fluid as a collection of particles and simulates their collisions and streaming.
+                    </p>
+                    <p>
+                        This method is particularly well-suited for complex geometries, multiphase flows, and flows in porous media. It's also inherently parallelizable, making it efficient for modern computing architectures.
+                    </p>
+                </div>
+                
+                <div>
+                    <h3>Key Components of LBM</h3>
+                    <ul>
+                        <li>Discretized Velocity Space: The D2Q9 model used here has 9 discrete velocity directions.</li>
+                        <li>Collision Step: Particles at each lattice site collide, resulting in redistribution according to the BGK approximation.</li>
+                        <li>Streaming Step: After collision, particles move to neighboring lattice sites.</li>
+                        <li>Boundary Conditions: Special rules handle obstacles and inlet/outlet conditions.</li>
+                    </ul>
+                </div>
+                
+                <div style="background-color: #262626; padding: 20px; margin-top: 20px; border-radius: 4px;">
+                    <h3>Reynolds Number</h3>
+                    <p>
+                        The Reynolds number (Re) characterizes the flow and is given by Re = (characteristic length × velocity) / viscosity. Lower viscosity results in higher Re and potentially turbulent flow patterns.
+                    </p>
+                </div>
+            </div>
+        </section>
+        
+        <section id="formulas">
+            <div class="panel">
+                <h2>Formulas</h2>
+                
+                <div>
+                    <h3>Key Equations</h3>
+                    
+                    <div>
+                        <h4>Equilibrium Distribution</h4>
+                        <p>The equilibrium distribution function is given by:</p>
+                        <div class="formula-card" id="formula1">
+                            f_i^{eq}(\mathbf{x}, t) = w_i \rho \left[ 1 + \frac{\mathbf{e}_i \cdot \mathbf{u}}{c_s^2} + \frac{(\mathbf{e}_i \cdot \mathbf{u})^2}{2c_s^4} - \frac{\mathbf{u} \cdot \mathbf{u}}{2c_s^2} \right]
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4>Collision Operator (BGK Approximation)</h4>
+                        <p>The collision step follows:</p>
+                        <div class="formula-card" id="formula2">
+                            f_i(\mathbf{x}, t + \Delta t) = f_i(\mathbf{x}, t) - \frac{1}{\tau} [f_i(\mathbf{x}, t) - f_i^{eq}(\mathbf{x}, t)]
+                        </div>
+                        <p>Where τ is the relaxation time related to viscosity: <span class="formula">τ = 3ν + 0.5</span></p>
+                    </div>
+                    
+                    <div>
+                        <h4>Streaming Step</h4>
+                        <p>After collision, distribution functions stream to neighboring nodes:</p>
+                        <div class="formula-card" id="formula3">
+                            f_i(\mathbf{x} + \mathbf{e}_i\Delta t, t + \Delta t) = f_i^*(\mathbf{x}, t)
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4>Macroscopic Quantities</h4>
+                        <p>Density and velocity are computed from distribution functions:</p>
+                        <div class="formula-card">
+                            <div class="formula" id="formula4" style="margin-bottom: 15px;">
+                                \rho(\mathbf{x}, t) = \sum_i f_i(\mathbf{x}, t)
+                            </div>
+                            <div class="formula" id="formula5">
+                                \rho(\mathbf{x}, t)\mathbf{u}(\mathbf{x}, t) = \sum_i \mathbf{e}_i f_i(\mathbf{x}, t)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="about">
+            <div class="panel">
+                <h2>About</h2>
+                
+                <p>
+                    This simulator implements the Lattice Boltzmann Method (LBM) for computational fluid dynamics. The backend is powered by Go, and this frontend interface allows for interactive parameter adjustment and visualization.
+                </p>
+                <p>
+                    The simulation creates a circular obstacle in the middle of a flow field and simulates fluid flow around it. The color intensity represents the fluid velocity magnitude.
+                </p>
+                
+                <h3>Implementation Details</h3>
+                <ul>
+                    <li>The D2Q9 model with 9 velocity directions is used</li>
+                    <li>BGK collision operator with a single relaxation time</li>
+                    <li>Periodic boundary conditions on the top and bottom</li>
+                    <li>Inlet velocity condition on the left</li>
+                    <li>Outflow condition on the right</li>
+                    <li>Bounce-back boundary condition for the obstacle</li>
+                </ul>
+            </div>
+        </section>
+        
+        <footer>
+            © 2025 | Hosted on Netlify
+        </footer>
+    </div>
+    
+    <script>
+        // Current parameter values
+        const params = {
+            width: 1200,
+            height: 480,
+            xdim: 600,
+            ydim: 240,
+            velocity: 0.10,
+            viscosity: 0.020,
+            timeStepsPerFrame: 20,
+            totalTimeSteps: 20000,
+            gifDelay: 2
+        };
+        
+        // Default parameter values
+        const defaultParams = { ...params };
+        
+        // API endpoints
+        const API = {
+            simulate: '/api/simulate',
+            progress: '/api/progress',
+            result: '/api/result'
+        };
+        
+        // Update display values when sliders change
+        document.querySelectorAll('.parameter-slider').forEach(slider => {
+            const id = slider.id;
+            const valueDisplay = document.getElementById(`${id}-value`);
+            
+            slider.addEventListener('input', () => {
+                params[id] = parseFloat(slider.value);
+                valueDisplay.textContent = slider.value;
+            });
+        });
+        
+        // Reset to defaults
+        document.getElementById('reset-defaults').addEventListener('click', () => {
+            Object.assign(params, defaultParams);
+            
+            // Update all sliders and displays
+            for (const [key, value] of Object.entries(params)) {
+                const slider = document.getElementById(key);
+                const display = document.getElementById(`${key}-value`);
+                
+                if (slider && display) {
+                    slider.value = value;
+                    display.textContent = value;
+                }
+            }
+        });
+        
+        // Navigation highlighting
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                navLinks.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+            });
+        });
+        
+        // Handle scroll to highlight nav links
+        window.addEventListener('scroll', () => {
+            const sections = document.querySelectorAll('section');
+            let currentSection = '';
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 100) {
+                    currentSection = `#${section.id}`;
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === currentSection) {
+                    link.classList.add('active');
+                }
+            });
+        });
+        
+        // Add smooth scrolling to nav links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+        
+        // Simulation control
+        const runButton = document.getElementById('run-button');
+        const downloadButton = document.getElementById('download-button');
+        const simulationGif = document.getElementById('simulation-gif');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        
+        // Check progress at regular intervals
+        function startProgressChecking() {
+            return setInterval(async () => {
+                try {
+                    const response = await fetch(API.progress);
+                    const data = await response.json();
+                    
+                    // Update progress bar
+                    progressBar.style.width = `${data.percent}%`;
+                    progressText.textContent = `${data.percent}%`;
+                    
+                    // Check if simulation is complete
+                    if (data.status === 'complete' && data.percent === 100) {
+                        // Stop checking progress
+                        clearInterval(progressCheckInterval);
+                        
+                        // Load the simulation result
+                        loadingIndicator.style.display = 'none';
+                        simulationGif.src = API.result + '?t=' + new Date().getTime(); // Add timestamp to prevent caching
+                        simulationGif.style.display = 'block';
+                        downloadButton.style.display = 'block';
+                        
+                        runButton.disabled = false;
+                        runButton.textContent = 'Run Simulation';
+                    }
+                    
+                    // Check if error occurred
+                    if (data.status === 'error') {
+                        clearInterval(progressCheckInterval);
+                        
+                        alert('An error occurred during simulation. Please try different parameters.');
+                        
+                        runButton.disabled = false;
+                        runButton.textContent = 'Run Simulation';
+                    }
+                } catch (error) {
+                    console.error('Error checking progress:', error);
+                }
+            }, 500);
+        }
+        
+        let progressCheckInterval;
+        
+        runButton.addEventListener('click', async () => {
+            // Start simulation
+            runButton.disabled = true;
+            runButton.textContent = 'Simulating...';
+            
+            downloadButton.style.display = 'none';
+            simulationGif.style.display = 'none';
+            loadingIndicator.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+            
+            try {
+                // Send simulation parameters to server
+                const response = await fetch(API.simulate, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(params)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to start simulation');
+                }
+                
+                const data = await response.json();
+                console.log('Simulation started:', data);
+                
+                // Start checking progress
+                progressCheckInterval = startProgressChecking();
+            } catch (error) {
+                console.error('Error starting simulation:', error);
+                alert('Error starting simulation. Please try again.');
+                
+                runButton.disabled = false;
+                runButton.textContent = 'Run Simulation';
+            }
+        });
+        
+        downloadButton.addEventListener('click', () => {
+            // Create a download link
+            const a = document.createElement('a');
+            a.href = simulationGif.src;
+            a.download = 'cfd_simulation.gif';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+        
+        // Render math formulas
+        document.addEventListener('DOMContentLoaded', () => {
+            // Render the formulas when the page loads
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ]
+            });
+        });
+    </script>
+</body>
+</html>

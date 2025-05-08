@@ -1,0 +1,10 @@
+{
+  "width": 1200,
+  "height": 480,
+  "xdim": 600,
+  "ydim": 240,
+  "velocity": 0.1,
+  "viscosity": 0.02,
+  "timeStepsPerFrame": 20,
+  "totalTimeSteps": 20000
+}
