@@ -1,15 +1,11 @@
 [build]
-  # Directory to publish (the public directory)
   publish = "public"
-  # Build command (builds Go binary and prepares the public folder)
-  command = "npm run build && ./cfd_simulator -config=default_config.json"
+  command = "npm install && go build -o cfd_simulator main.go && mkdir -p public && ./cfd_simulator -config=default_config.json"
   
 [build.environment]
-  # Node.js version
-  NODE_VERSION = "18.x"
-  # Go version
+  NODE_VERSION = "18"
   GO_VERSION = "1.20"
-
+  
 # Redirects and rewrite rules for the API
 [[redirects]]
   from = "/api/*"
