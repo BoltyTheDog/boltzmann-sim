@@ -6,5 +6,5 @@
   "velocity": 0.1,
   "viscosity": 0.02,
   "timeStepsPerFrame": 20,
-  "totalTimeSteps": 20000
+  "totalTimeSteps": 20000,
 }

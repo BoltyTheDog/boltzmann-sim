@@ -193,12 +193,94 @@
             margin-bottom: 15px;
         }
         
+        .formula-with-desc {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+        
+        .formula-desc {
+            margin-top: 10px;
+            color: var(--text-secondary);
+        }
+        
+        .katex-display {
+            margin: 1em 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        
+        .notice-box {
+            background-color: rgba(30, 30, 30, 0.6);
+            border-left: 4px solid #555555;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .lattice-model-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+            background-color: #262626;
+            padding: 20px;
+            border-radius: 4px;
+        }
+        
+        .lattice-model-svg {
+            max-width: 100%;
+            height: auto;
+            background-color: #222;
+            border-radius: 4px;
+        }
+        
         footer {
             text-align: center;
             padding: 20px 0;
             margin-top: 40px;
             border-top: 1px solid var(--border-color);
             color: var(--text-secondary);
+        }
+
+        .parameter-select {
+        width: 100%;
+        padding: 8px;
+        background-color: var(--panel-bg);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        margin-bottom: 15px;
+        }
+        
+        .parameter-input {
+            width: 100%;
+            padding: 8px;
+            background-color: var(--panel-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .parameter-help {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
+        
+        .image-preview-box {
+            background-color: #262626;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+        }
+        
+        #obstaclePreview {
+            max-width: 100%;
+            max-height: 150px;
+            background-color: rgba(0, 0, 0, 0.2);
         }
         
         @media (max-width: 768px) {
@@ -212,6 +294,15 @@
             
             .button {
                 margin-bottom: 10px;
+            }
+            
+            nav {
+                overflow-x: auto;
+                padding-bottom: 5px;
+            }
+            
+            .nav-link {
+                flex-shrink: 0;
             }
         }
     </style>
@@ -293,13 +384,41 @@
                     <div class="parameter-group">
                         <div>
                             <label for="velocity">Velocity: <span id="velocity-value">0.10</span></label>
-                            <input type="range" id="velocity" min="0.01" max="0.30" value="0.10" step="0.01" class="parameter-slider">
+                            <input type="range" id="velocity" min="0.01" max="1" value="0.10" step="0.1" class="parameter-slider">
                             <p>Initial fluid velocity</p>
                         </div>
                         <div>
                             <label for="viscosity">Viscosity: <span id="viscosity-value">0.020</span></label>
                             <input type="range" id="viscosity" min="0.001" max="0.100" value="0.020" step="0.001" class="parameter-slider">
                             <p>Higher = more "sticky" fluid</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3>Obstacle Shape</h3>
+                    <div class="parameter-group">
+                        <div>
+                            <label for="obstacleType">Type:</label>
+                            <select id="obstacleType" class="parameter-select">
+                                <option value="circle">Circle</option>
+                                <option value="square">Square</option>
+                                <option value="airfoil">NACA Airfoil</option>
+                                <option value="custom">Custom (Upload PNG)</option>
+                            </select>
+                        </div>
+                        
+                        <div id="customObstacleUpload" style="display: none;">
+                            <label for="obstacleImage">Upload PNG Image:</label>
+                            <input type="file" id="obstacleImage" accept="image/png" class="parameter-input">
+                            <p class="parameter-help">Use a PNG with transparency. Black areas will be treated as obstacles.</p>
+                            
+                            <div id="imagePreviewContainer" style="display: none; margin-top: 15px;">
+                                <h4>Preview:</h4>
+                                <div class="image-preview-box">
+                                    <img id="obstaclePreview" alt="Obstacle Preview">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -344,10 +463,74 @@
                     </p>
                 </div>
                 
+                <div class="lattice-model-container">
+                    <svg class="lattice-model-svg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Background grid -->
+                        <defs>
+                            <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+                                <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#333" stroke-width="1"/>
+                            </pattern>
+                        </defs>
+                        <rect width="400" height="400" fill="url(#grid)" />
+                        
+                        <!-- Center point -->
+                        <circle cx="200" cy="200" r="8" fill="#f5f5f5" />
+                        <text x="208" y="190" font-family="Arial" font-size="14" fill="#f5f5f5" text-anchor="start">0</text>
+                        
+                        <!-- North direction -->
+                        <line x1="200" y1="200" x2="200" y2="100" stroke="#4d8dff" stroke-width="3" marker-end="url(#arrowhead)" />
+                        <text x="205" y="120" font-family="Arial" font-size="14" fill="#4d8dff">N</text>
+                        
+                        <!-- South direction -->
+                        <line x1="200" y1="200" x2="200" y2="300" stroke="#4d8dff" stroke-width="3" marker-end="url(#arrowhead)" />
+                        <text x="205" y="280" font-family="Arial" font-size="14" fill="#4d8dff">S</text>
+                        
+                        <!-- East direction -->
+                        <line x1="200" y1="200" x2="300" y2="200" stroke="#4d8dff" stroke-width="3" marker-end="url(#arrowhead)" />
+                        <text x="280" y="190" font-family="Arial" font-size="14" fill="#4d8dff">E</text>
+                        
+                        <!-- West direction -->
+                        <line x1="200" y1="200" x2="100" y2="200" stroke="#4d8dff" stroke-width="3" marker-end="url(#arrowhead)" />
+                        <text x="115" y="190" font-family="Arial" font-size="14" fill="#4d8dff">W</text>
+                        
+                        <!-- Northeast direction -->
+                        <line x1="200" y1="200" x2="300" y2="100" stroke="#ff4d8d" stroke-width="3" marker-end="url(#arrowhead)" />
+                        <text x="280" y="110" font-family="Arial" font-size="14" fill="#ff4d8d">NE</text>
+                        
+                        <!-- Northwest direction -->
+                        <line x1="200" y1="200" x2="100" y2="100" stroke="#ff4d8d" stroke-width="3" marker-end="url(#arrowhead)" />
+                        <text x="105" y="110" font-family="Arial" font-size="14" fill="#ff4d8d">NW</text>
+                        
+                        <!-- Southeast direction -->
+                        <line x1="200" y1="200" x2="300" y2="300" stroke="#ff4d8d" stroke-width="3" marker-end="url(#arrowhead)" />
+                        <text x="280" y="290" font-family="Arial" font-size="14" fill="#ff4d8d">SE</text>
+                        
+                        <!-- Southwest direction -->
+                        <line x1="200" y1="200" x2="100" y2="300" stroke="#ff4d8d" stroke-width="3" marker-end="url(#arrowhead)" />
+                        <text x="105" y="290" font-family="Arial" font-size="14" fill="#ff4d8d">SW</text>
+                        
+                        <!-- Title -->
+                        <text x="200" y="50" font-family="Arial" font-size="20" fill="#f5f5f5" text-anchor="middle" font-weight="bold">D2Q9 Lattice Model</text>
+                        <text x="200" y="75" font-family="Arial" font-size="14" fill="#aaaaaa" text-anchor="middle">(2D, 9 Velocity Directions)</text>
+                        
+                        <!-- Legend -->
+                        <text x="200" y="350" font-family="Arial" font-size="14" fill="#4d8dff" text-anchor="middle">Cardinal directions: weight = 1/9</text>
+                        <text x="200" y="370" font-family="Arial" font-size="14" fill="#ff4d8d" text-anchor="middle">Diagonal directions: weight = 1/36</text>
+                        <text x="200" y="390" font-family="Arial" font-size="14" fill="#f5f5f5" text-anchor="middle">Center (stationary): weight = 4/9</text>
+                        
+                        <!-- Arrow marker definition -->
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#f5f5f5" />
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+                
                 <div>
                     <h3>Key Components of LBM</h3>
                     <ul>
-                        <li>Discretized Velocity Space: The D2Q9 model used here has 9 discrete velocity directions.</li>
+                        <li>Discretized Velocity Space: The D2Q9 model used here has 9 discrete velocity directions, as shown in the diagram above.</li>
                         <li>Collision Step: Particles at each lattice site collide, resulting in redistribution according to the BGK approximation.</li>
                         <li>Streaming Step: After collision, particles move to neighboring lattice sites.</li>
                         <li>Boundary Conditions: Special rules handle obstacles and inlet/outlet conditions.</li>
@@ -368,44 +551,82 @@
                 <h2>Formulas</h2>
                 
                 <div>
-                    <h3>Key Equations</h3>
+                    <h3>Lattice Boltzmann Method: Key Equations</h3>
                     
-                    <div>
-                        <h4>Equilibrium Distribution</h4>
-                        <p>The equilibrium distribution function is given by:</p>
-                        <div class="formula-card" id="formula1">
-                            f_i^{eq}(\mathbf{x}, t) = w_i \rho \left[ 1 + \frac{\mathbf{e}_i \cdot \mathbf{u}}{c_s^2} + \frac{(\mathbf{e}_i \cdot \mathbf{u})^2}{2c_s^4} - \frac{\mathbf{u} \cdot \mathbf{u}}{2c_s^2} \right]
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <h4>Collision Operator (BGK Approximation)</h4>
-                        <p>The collision step follows:</p>
-                        <div class="formula-card" id="formula2">
-                            f_i(\mathbf{x}, t + \Delta t) = f_i(\mathbf{x}, t) - \frac{1}{\tau} [f_i(\mathbf{x}, t) - f_i^{eq}(\mathbf{x}, t)]
-                        </div>
-                        <p>Where τ is the relaxation time related to viscosity: <span class="formula">τ = 3ν + 0.5</span></p>
-                    </div>
-                    
-                    <div>
-                        <h4>Streaming Step</h4>
-                        <p>After collision, distribution functions stream to neighboring nodes:</p>
-                        <div class="formula-card" id="formula3">
-                            f_i(\mathbf{x} + \mathbf{e}_i\Delta t, t + \Delta t) = f_i^*(\mathbf{x}, t)
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <h4>Macroscopic Quantities</h4>
-                        <p>Density and velocity are computed from distribution functions:</p>
+                    <div class="formula-with-desc">
+                        <h4>Continuous Boltzmann Equation</h4>
                         <div class="formula-card">
-                            <div class="formula" id="formula4" style="margin-bottom: 15px;">
-                                \rho(\mathbf{x}, t) = \sum_i f_i(\mathbf{x}, t)
-                            </div>
-                            <div class="formula" id="formula5">
-                                \rho(\mathbf{x}, t)\mathbf{u}(\mathbf{x}, t) = \sum_i \mathbf{e}_i f_i(\mathbf{x}, t)
-                            </div>
+                            <div class="katex-block">$$\frac{\partial f}{\partial t} + \vec{v} \cdot \nabla f = \Omega(f)$$</div>
                         </div>
+                        <p class="formula-desc">The Boltzmann equation describes the evolution of the particle distribution function f in phase space, where Ω is the collision operator.</p>
+                    </div>
+                    
+                    <div class="formula-with-desc">
+                        <h4>Discretized LBM Equation</h4>
+                        <div class="formula-card">
+                            <div class="katex-block">$$f_i(\vec{x} + \vec{c}_i\Delta t, t + \Delta t) - f_i(\vec{x}, t) = \Omega_i(f)$$</div>
+                        </div>
+                        <p class="formula-desc">The discretized equation shows how the distribution function evolves in discrete steps, where c̲ᵢ represents discrete velocities.</p>
+                    </div>
+                    
+                    <div class="formula-with-desc">
+                        <h4>BGK Collision Operator</h4>
+                        <div class="formula-card">
+                            <div class="katex-block">$$\Omega_i(f) = -\frac{1}{\tau}(f_i - f_i^{eq})$$</div>
+                        </div>
+                        <p class="formula-desc">The BGK (Bhatnagar-Gross-Krook) approximation for collisions, where τ is the relaxation time and f^(eq) is the equilibrium distribution.</p>
+                    </div>
+                    
+                    <div class="formula-with-desc">
+                        <h4>Equilibrium Distribution</h4>
+                        <div class="formula-card">
+                            <div class="katex-block">$$f_i^{eq} = \rho w_i \left[1 + \frac{\vec{c}_i \cdot \vec{u}}{c_s^2} + \frac{(\vec{c}_i \cdot \vec{u})^2}{2c_s^4} - \frac{\vec{u} \cdot \vec{u}}{2c_s^2}\right]$$</div>
+                        </div>
+                        <p class="formula-desc">The equilibrium distribution function, where ρ is density, w_i are weights, u̲ is velocity, and c_s is the speed of sound in the lattice.</p>
+                    </div>
+                    
+                    <h3>Macroscopic Quantities</h3>
+                    
+                    <div class="formula-with-desc">
+                        <h4>Density</h4>
+                        <div class="formula-card">
+                            <div class="katex-block">$$\rho = \sum_i f_i$$</div>
+                        </div>
+                        <p class="formula-desc">The fluid density is the sum of all distribution functions at a point.</p>
+                    </div>
+                    
+                    <div class="formula-with-desc">
+                        <h4>Momentum</h4>
+                        <div class="formula-card">
+                            <div class="katex-block">$$\rho \vec{u} = \sum_i f_i \vec{c}_i$$</div>
+                        </div>
+                        <p class="formula-desc">The fluid momentum is the weighted sum of distribution functions with their respective velocities.</p>
+                    </div>
+                    
+                    <h3>Connection to Navier-Stokes</h3>
+                    
+                    <div class="formula-with-desc">
+                        <h4>Continuity Equation</h4>
+                        <div class="formula-card">
+                            <div class="katex-block">$$\nabla \cdot \vec{u} = 0$$</div>
+                        </div>
+                        <p class="formula-desc">The continuity equation for incompressible flow, which LBM satisfies in the low Mach number limit.</p>
+                    </div>
+                    
+                    <div class="formula-with-desc">
+                        <h4>Momentum Equation</h4>
+                        <div class="formula-card">
+                            <div class="katex-block">$$\frac{\partial \vec{u}}{\partial t} + (\vec{u} \cdot \nabla)\vec{u} = -\frac{1}{\rho}\nabla p + \nu \nabla^2 \vec{u}$$</div>
+                        </div>
+                        <p class="formula-desc">The Navier-Stokes equation for momentum conservation, which LBM approximates through the Chapman-Enskog expansion.</p>
+                    </div>
+                    
+                    <div class="formula-with-desc">
+                        <h4>Relationship between Viscosity and Relaxation Time</h4>
+                        <div class="formula-card">
+                            <div class="katex-block">$$\nu = c_s^2 (\tau - 0.5)$$</div>
+                        </div>
+                        <p class="formula-desc">The kinematic viscosity ν in LBM is determined by the relaxation time τ and the square of the speed of sound c_s.</p>
                     </div>
                 </div>
             </div>
@@ -431,156 +652,221 @@
                     <li>Outflow condition on the right</li>
                     <li>Bounce-back boundary condition for the obstacle</li>
                 </ul>
+                <h3>TO-DO</h3>
+                <ul>
+                    <li>Boundary from Image code</li>
+                    <li>Add sources explained and referenced</li>
+                    <li>Add LaTeX rendering</li>
+                </ul>
+                
             </div>
         </section>
         
         <footer>
-            © 2025 | Hosted on Netlify
+            © 2025 | Hosted by David
         </footer>
     </div>
     
     <script>
-        // Current parameter values
-        const params = {
-            width: 1200,
-            height: 480,
-            xdim: 600,
-            ydim: 240,
-            velocity: 0.10,
-            viscosity: 0.020,
-            timeStepsPerFrame: 20,
-            totalTimeSteps: 20000,
-            gifDelay: 2
-        };
+        // Select DOM elements
+    const runButton = document.getElementById('run-button');
+    const downloadButton = document.getElementById('download-button');
+    const simulationGif = document.getElementById('simulation-gif');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const progressBar = document.getElementById('progress-bar'); 
+    const progressText = document.getElementById('progress-text');
+
+    // Current parameter values
+    const params = {
+        width: 1200,
+        height: 480,
+        xdim: 600,
+        ydim: 240,
+        velocity: 0.10,
+        viscosity: 0.020,
+        timeStepsPerFrame: 20,
+        totalTimeSteps: 20000,
+        gifDelay: 2,
+        obstacle: {
+            type: 'circle',
+            imageData: null
+        }
+    };
+
+    // Default parameter values
+    const defaultParams = { ...params };
+
+    // API endpoints
+    const API = {
+        simulate: '/api/simulate',
+        progress: '/api/progress',
+        result: '/api/result'
+    };
+     const obstacleTypeSelect = document.getElementById('obstacleType');
+    const customObstacleUpload = document.getElementById('customObstacleUpload');
+    
+    obstacleTypeSelect.addEventListener('change', function() {
+        const selectedType = this.value;
+        params.obstacle.type = selectedType;
         
-        // Default parameter values
-        const defaultParams = { ...params };
-        
-        // API endpoints
-        const API = {
-            simulate: '/api/simulate',
-            progress: '/api/progress',
-            result: '/api/result'
-        };
-        
-        // Update display values when sliders change
-        document.querySelectorAll('.parameter-slider').forEach(slider => {
-            const id = slider.id;
-            const valueDisplay = document.getElementById(`${id}-value`);
+        // Show/hide custom upload section
+        if (selectedType === 'custom') {
+            customObstacleUpload.style.display = 'block';
+        } else {
+            customObstacleUpload.style.display = 'none';
+        }
+    });
+    
+    // Handle image upload
+    const obstacleImageInput = document.getElementById('obstacleImage');
+    const obstaclePreview = document.getElementById('obstaclePreview');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    
+    obstacleImageInput.addEventListener('change', function(e) {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
             
-            slider.addEventListener('input', () => {
-                params[id] = parseFloat(slider.value);
-                valueDisplay.textContent = slider.value;
-            });
-        });
-        
-        // Reset to defaults
-        document.getElementById('reset-defaults').addEventListener('click', () => {
-            Object.assign(params, defaultParams);
+            // Only accept PNG files
+            if (file.type !== 'image/png') {
+                alert('Please upload a PNG file with transparency');
+                return;
+            }
             
-            // Update all sliders and displays
-            for (const [key, value] of Object.entries(params)) {
-                const slider = document.getElementById(key);
-                const display = document.getElementById(`${key}-value`);
+            // Read the file
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const imageData = event.target.result;
+                params.obstacle.imageData = imageData;
                 
-                if (slider && display) {
-                    slider.value = value;
-                    display.textContent = value;
-                }
+                // Show preview
+                obstaclePreview.src = imageData;
+                imagePreviewContainer.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Update display values when sliders change
+    document.querySelectorAll('.parameter-slider').forEach(slider => {
+        const id = slider.id;
+        const valueDisplay = document.getElementById(`${id}-value`);
+        
+        slider.addEventListener('input', () => {
+            params[id] = parseFloat(slider.value);
+            valueDisplay.textContent = slider.value;
+        });
+    });
+
+    // Reset to defaults
+    document.getElementById('reset-defaults').addEventListener('click', () => {
+        Object.assign(params, defaultParams);
+        params.obstacle = { ...defaultParams.obstacle };
+        obstacleTypeSelect.value = params.obstacle.type;
+        // Update all sliders and displays
+        for (const [key, value] of Object.entries(params)) {
+            const slider = document.getElementById(key);
+            const display = document.getElementById(`${key}-value`);
+            
+            if (slider && display) {
+                slider.value = value;
+                display.textContent = value;
+            }
+        }
+         if (params.obstacle.type !== 'custom') {
+            customObstacleUpload.style.display = 'none';
+        }
+        
+        // Clear preview
+        imagePreviewContainer.style.display = 'none';
+        obstaclePreview.src = '';
+    });
+
+    // Navigation highlighting
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            navLinks.forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+        });
+    });
+
+    // Handle scroll to highlight nav links
+    window.addEventListener('scroll', () => {
+        const sections = document.querySelectorAll('section');
+        let currentSection = '';
+        
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            if (scrollY >= sectionTop - 100) {
+                currentSection = `#${section.id}`;
             }
         });
         
-        // Navigation highlighting
-        const navLinks = document.querySelectorAll('.nav-link');
         navLinks.forEach(link => {
-            link.addEventListener('click', () => {
-                navLinks.forEach(l => l.classList.remove('active'));
+            link.classList.remove('active');
+            if (link.getAttribute('href') === currentSection) {
                 link.classList.add('active');
+            }
+        });
+    });
+
+    // Add smooth scrolling to nav links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            
+            document.querySelector(this.getAttribute('href')).scrollIntoView({
+                behavior: 'smooth'
             });
         });
-        
-        // Handle scroll to highlight nav links
-        window.addEventListener('scroll', () => {
-            const sections = document.querySelectorAll('section');
-            let currentSection = '';
-            
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop;
-                if (scrollY >= sectionTop - 100) {
-                    currentSection = `#${section.id}`;
-                }
-            });
-            
-            navLinks.forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('href') === currentSection) {
-                    link.classList.add('active');
-                }
-            });
-        });
-        
-        // Add smooth scrolling to nav links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
+    });
+
+    // Check progress at regular intervals
+    function startProgressChecking() {
+        return setInterval(async () => {
+            try {
+                const response = await fetch(API.progress);
+                const data = await response.json();
                 
-                document.querySelector(this.getAttribute('href')).scrollIntoView({
-                    behavior: 'smooth'
-                });
-            });
-        });
-        
-        // Simulation control
-        const runButton = document.getElementById('run-button');
-        const downloadButton = document.getElementById('download-button');
-        const simulationGif = document.getElementById('simulation-gif');
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const progressBar = document.getElementById('progress-bar');
-        const progressText = document.getElementById('progress-text');
-        
-        // Check progress at regular intervals
-        function startProgressChecking() {
-            return setInterval(async () => {
-                try {
-                    const response = await fetch(API.progress);
-                    const data = await response.json();
+                // Update progress bar
+                progressBar.style.width = `${data.percent}%`;
+                progressText.textContent = `${data.percent}%`;
+                
+                // Check if simulation is complete
+                if (data.status === 'complete' && data.percent === 100) {
+                    // Stop checking progress
+                    clearInterval(progressCheckInterval);
                     
-                    // Update progress bar
-                    progressBar.style.width = `${data.percent}%`;
-                    progressText.textContent = `${data.percent}%`;
+                    // Load the simulation result
+                    loadingIndicator.style.display = 'none';
+                    simulationGif.src = API.result + '?t=' + new Date().getTime(); // Add timestamp to prevent caching
+                    simulationGif.style.display = 'block';
+                    downloadButton.style.display = 'block';
                     
-                    // Check if simulation is complete
-                    if (data.status === 'complete' && data.percent === 100) {
-                        // Stop checking progress
-                        clearInterval(progressCheckInterval);
-                        
-                        // Load the simulation result
-                        loadingIndicator.style.display = 'none';
-                        simulationGif.src = API.result + '?t=' + new Date().getTime(); // Add timestamp to prevent caching
-                        simulationGif.style.display = 'block';
-                        downloadButton.style.display = 'block';
-                        
-                        runButton.disabled = false;
-                        runButton.textContent = 'Run Simulation';
-                    }
-                    
-                    // Check if error occurred
-                    if (data.status === 'error') {
-                        clearInterval(progressCheckInterval);
-                        
-                        alert('An error occurred during simulation. Please try different parameters.');
-                        
-                        runButton.disabled = false;
-                        runButton.textContent = 'Run Simulation';
-                    }
-                } catch (error) {
-                    console.error('Error checking progress:', error);
+                    runButton.disabled = false;
+                    runButton.textContent = 'Run Simulation';
                 }
-            }, 500);
-        }
-        
-        let progressCheckInterval;
-        
+                
+                // Check if error occurred
+                if (data.status === 'error') {
+                    clearInterval(progressCheckInterval);
+                    
+                    alert('An error occurred during simulation. Please try different parameters.');
+                    
+                    runButton.disabled = false;
+                    runButton.textContent = 'Run Simulation';
+                }
+            } catch (error) {
+                console.error('Error checking progress:', error);
+            }
+        }, 500);
+    }
+
+    let progressCheckInterval;
+
+    // Set up event listeners once DOM is fully loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        // Run button event listener
         runButton.addEventListener('click', async () => {
             // Start simulation
             runButton.disabled = true;
@@ -613,13 +899,32 @@
                 progressCheckInterval = startProgressChecking();
             } catch (error) {
                 console.error('Error starting simulation:', error);
-                alert('Error starting simulation. Please try again.');
                 
-                runButton.disabled = false;
-                runButton.textContent = 'Run Simulation';
+                // Fallback to showing pre-computed simulation if API calls fail
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += 5;
+                    progressBar.style.width = `${progress}%`;
+                    progressText.textContent = `${progress}%`;
+                    
+                    if (progress >= 100) {
+                        clearInterval(interval);
+                        
+                        setTimeout(() => {
+                            loadingIndicator.style.display = 'none';
+                            simulationGif.src = '/cfd_simulation.gif?' + new Date().getTime();
+                            simulationGif.style.display = 'block';
+                            downloadButton.style.display = 'block';
+                            
+                            runButton.disabled = false;
+                            runButton.textContent = 'Run Simulation';
+                        }, 500);
+                    }
+                }, 50);
             }
         });
         
+        // Download button event listener
         downloadButton.addEventListener('click', () => {
             // Create a download link
             const a = document.createElement('a');
@@ -631,17 +936,36 @@
         });
         
         // Render math formulas
-        document.addEventListener('DOMContentLoaded', () => {
-            // Render the formulas when the page loads
-            renderMathInElement(document.body, {
-                delimiters: [
-                    {left: '$$', right: '$$', display: true},
-                    {left: '$', right: '$', display: false},
-                    {left: '\\(', right: '\\)', display: false},
-                    {left: '\\[', right: '\\]', display: true}
-                ]
-            });
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$', right: '$', display: true},
+                {left: ', right: ', display: false}
+            ],
+            throwOnError: false,
+            trust: true,
+            strict: false,
+            macros: {
+                "\\vec": "\\mathbf"
+            }
         });
+        
+        // Initially try to load the pre-computed simulation when page loads
+        if (window.location.hash === '#simulator' || window.location.hash === '') {
+            setTimeout(() => {
+                simulationGif.src = '/cfd_simulation.gif';
+                simulationGif.onload = function() {
+                    loadingIndicator.style.display = 'none';
+                    simulationGif.style.display = 'block';
+                    downloadButton.style.display = 'block';
+                };
+                
+                // If image fails to load, hide the loading indicator
+                simulationGif.onerror = function() {
+                    loadingIndicator.style.display = 'none';
+                };
+            }, 500);
+        }
+    });
     </script>
 </body>
 </html>

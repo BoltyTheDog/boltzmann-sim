@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/gif"
+	"image/png"
 	"io/ioutil"
 	"log"
 	"math"
@@ -34,9 +35,16 @@ type Config struct {
 	TimeStepsPerFrame int `json:"timeStepsPerFrame"`
 	TotalTimeSteps    int `json:"totalTimeSteps"`
 	GifDelay          int `json:"gifDelay"`
+
+	// Obstacle configuration
+	Obstacle ObstacleConfig `json:"obstacle"`
 }
 
-// Default configuration
+type ObstacleConfig struct {
+	Type string   `json:"type"`
+	Data [][]bool `json:"data,omitempty"`
+}
+
 var defaultConfig = Config{
 	Width:             1200,
 	Height:            480,
@@ -47,6 +55,9 @@ var defaultConfig = Config{
 	TimeStepsPerFrame: 20,
 	TotalTimeSteps:    20000,
 	GifDelay:          2,
+	Obstacle: ObstacleConfig{
+		Type: "circle",
+	},
 }
 
 // Output path for the GIF file
@@ -103,6 +114,59 @@ func NewCFDSimulation(config Config) *CFDSimulation {
 	return sim
 }
 
+func nacaAirfoil(x, y, xdim, ydim int) bool {
+	// Normalize coordinates
+	xf := float64(x) / float64(xdim)
+	yf := float64(y) / float64(ydim)
+
+	// Airfoil position
+	xOffset := 0.001
+	yOffset := 0.5
+	xn := xf - xOffset
+	yn := yf - yOffset
+
+	// NACA 4-digit parameters (example: NACA 2412)
+	m := 0.02 // 2% camber (2/100)
+	p := 0.5  // Max camber at 40% chord (4/10)
+	t := 0.3  // 12% thickness (12/100)
+
+	// Reject points outside chord
+	if xn < 0.0 || xn > 1.0 {
+		return false
+	}
+
+	// Camber line and slope
+	var yc, dycdx float64
+	if xn < p {
+		yc = (m / (p * p)) * (2*p*xn - xn*xn)
+		dycdx = (2 * m / (p * p)) * (p - xn)
+	} else {
+		yc = (m / ((1 - p) * (1 - p))) * ((1 - 2*p) + 2*p*xn - xn*xn)
+		dycdx = (2 * m / ((1 - p) * (1 - p))) * (p - xn)
+	}
+
+	theta := math.Atan(dycdx)
+
+	// Thickness distribution (NACA 00xx thickness formula)
+	yt := 5 * t * (0.2969*math.Sqrt(xn) -
+		0.1260*xn -
+		0.3516*xn*xn +
+		0.2843*xn*xn*xn -
+		0.1015*xn*xn*xn*xn)
+
+	// Upper and lower surface positions
+	yUpper := yc + yt*math.Cos(theta)
+	yLower := yc - yt*math.Cos(theta)
+
+	// Adjust for better visualization scale
+	scaleFactor := 0.8
+	yUpper = yc + scaleFactor*(yUpper-yc)
+	yLower = yc + scaleFactor*(yLower-yc)
+
+	// Check if point is between upper and lower surface
+	return yn >= yLower && yn <= yUpper
+}
+
 // initArrays initializes all 2D arrays according to configuration
 func (sim *CFDSimulation) initArrays() {
 	xdim := sim.config.XDim
@@ -149,7 +213,305 @@ func (sim *CFDSimulation) initArrays() {
 	}
 }
 
-// reset initializes the simulation with initial conditions
+// Add this improved version of the initializeBarrier function to your main.go
+
+// Improved initializeBarrier function to better handle custom obstacles
+
+func (sim *CFDSimulation) initializeBarrier() {
+	xdim := sim.config.XDim
+	ydim := sim.config.YDim
+
+	// Clear existing barrier
+	for x := 0; x < xdim; x++ {
+		for y := 0; y < ydim; y++ {
+			sim.barrier[x][y] = false
+		}
+	}
+
+	obstacleType := sim.config.Obstacle.Type
+	log.Printf("Initializing barrier with obstacle type: %s", obstacleType)
+
+	switch obstacleType {
+	case "circle":
+		// Create circular barrier
+		for x := 0; x < xdim; x++ {
+			for y := 0; y < ydim; y++ {
+				relx := xdim/2 - x
+				rely := ydim/2 - y
+				r := math.Sqrt(float64(relx*relx + rely*rely))
+
+				minDim := xdim
+				if ydim < xdim {
+					minDim = ydim
+				}
+				sim.barrier[x][y] = (r < float64(minDim)*0.2)
+			}
+		}
+		log.Printf("Created circular obstacle")
+
+	case "square":
+		// Create square barrier
+		size := int(math.Min(float64(xdim), float64(ydim)) * 0.2)
+		centerX := xdim / 2
+		centerY := ydim / 2
+
+		for x := centerX - size; x <= centerX+size; x++ {
+			for y := centerY - size; y <= centerY+size; y++ {
+				if x >= 0 && x < xdim && y >= 0 && y < ydim {
+					sim.barrier[x][y] = true
+				}
+			}
+		}
+		log.Printf("Created square obstacle with size %d", size*2)
+
+	case "airfoil":
+		// Use the NACA airfoil function
+		for x := 0; x < xdim; x++ {
+			for y := 0; y < ydim; y++ {
+				sim.barrier[x][y] = nacaAirfoil(x, y, xdim, ydim)
+			}
+		}
+		log.Printf("Created NACA airfoil obstacle")
+
+	case "custom":
+		// Improved custom obstacle handling with better error checking
+		if sim.config.Obstacle.Data != nil {
+			customData := sim.config.Obstacle.Data
+			dataHeight := len(customData)
+
+			// Sanity check on the data with detailed logging
+			if dataHeight <= 0 {
+				log.Printf("Custom obstacle data has 0 height (nil or empty array), using circle instead")
+				sim.config.Obstacle.Type = "circle"
+				sim.initializeBarrier()
+				return
+			}
+
+			// Check the first row
+			if len(customData) == 0 || customData[0] == nil {
+				log.Printf("Custom obstacle has invalid first row, using circle instead")
+				sim.config.Obstacle.Type = "circle"
+				sim.initializeBarrier()
+				return
+			}
+
+			dataWidth := len(customData[0])
+			if dataWidth <= 0 {
+				log.Printf("Custom obstacle data has 0 width in first row, using circle instead")
+				sim.config.Obstacle.Type = "circle"
+				sim.initializeBarrier()
+				return
+			}
+
+			log.Printf("Processing custom obstacle: %dx%d", dataWidth, dataHeight)
+
+			// Check if we received valid data by sampling some values
+			hasTrue := false
+			hasFalse := false
+			rowLengthsConsistent := true
+
+			// Validate the data structure
+			for y := 0; y < dataHeight && y < 10; y++ {
+				if len(customData[y]) != dataWidth {
+					log.Printf("Warning: Inconsistent row width at y=%d: expected %d, got %d",
+						y, dataWidth, len(customData[y]))
+					rowLengthsConsistent = false
+				}
+
+				for x := 0; x < dataWidth && x < 10; x++ {
+					if customData[y][x] {
+						hasTrue = true
+					} else {
+						hasFalse = true
+					}
+				}
+			}
+
+			if !rowLengthsConsistent {
+				log.Printf("Warning: Custom obstacle data has inconsistent row lengths, will attempt to use anyway")
+			}
+
+			log.Printf("Data validation: hasTrue=%v, hasFalse=%v", hasTrue, hasFalse)
+
+			// Scale and center the custom obstacle
+			scaleX := float64(xdim) / float64(dataWidth)
+			scaleY := float64(ydim) / float64(dataHeight)
+			scale := math.Min(scaleX, scaleY) * 0.8 // Scale to 80% of available space
+
+			offsetX := (xdim - int(float64(dataWidth)*scale)) / 2
+			offsetY := (ydim - int(float64(dataHeight)*scale)) / 2
+
+			log.Printf("Scaling custom obstacle by factor %f, offset (%d,%d)", scale, offsetX, offsetY)
+
+			// Check if the scale is reasonable
+			if scale <= 0 {
+				log.Println("Invalid scale factor, using circle instead")
+				sim.config.Obstacle.Type = "circle"
+				sim.initializeBarrier()
+				return
+			}
+
+			// Map the custom data to the barrier
+			barrierCount := 0
+			for y := 0; y < ydim; y++ {
+				for x := 0; x < xdim; x++ {
+					// Convert simulation coordinates to image coordinates
+					imgX := int(float64(x-offsetX) / scale)
+					imgY := int(float64(y-offsetY) / scale)
+
+					// Check if inside image bounds
+					if imgX >= 0 && imgX < dataWidth && imgY >= 0 && imgY < dataHeight {
+						// Check for null values or invalid data
+						if imgY < len(customData) && imgX < len(customData[imgY]) {
+							sim.barrier[x][y] = customData[imgY][imgX]
+							if sim.barrier[x][y] {
+								barrierCount++
+							}
+						}
+					}
+				}
+			}
+
+			// Check if we got any barrier cells
+			if barrierCount == 0 {
+				log.Println("Warning: Custom obstacle resulted in 0 barrier cells")
+				// Try inverting the image - sometimes people expect black to be flow and white to be obstacle
+				log.Println("Attempting to invert the image...")
+
+				barrierCount = 0
+				for y := 0; y < ydim; y++ {
+					for x := 0; x < xdim; x++ {
+						// Convert simulation coordinates to image coordinates
+						imgX := int(float64(x-offsetX) / scale)
+						imgY := int(float64(y-offsetY) / scale)
+
+						// Check if inside image bounds
+						if imgX >= 0 && imgX < dataWidth && imgY >= 0 && imgY < dataHeight {
+							// Check for null values or invalid data
+							if imgY < len(customData) && imgX < len(customData[imgY]) {
+								// Invert the value
+								sim.barrier[x][y] = !customData[imgY][imgX]
+								if sim.barrier[x][y] {
+									barrierCount++
+								}
+							}
+						}
+					}
+				}
+
+				log.Printf("After inversion: %d barrier cells", barrierCount)
+
+				// If still no barrier, create a simple default obstacle
+				if barrierCount == 0 {
+					log.Println("No barrier cells after inversion, creating default obstacle")
+					// Create a small circle in the center
+					centerX := xdim / 2
+					centerY := ydim / 2
+					radius := math.Min(float64(xdim), float64(ydim)) * 0.1
+
+					for y := 0; y < ydim; y++ {
+						for x := 0; x < xdim; x++ {
+							dx := float64(x - centerX)
+							dy := float64(y - centerY)
+							distance := math.Sqrt(dx*dx + dy*dy)
+							sim.barrier[x][y] = distance < radius
+						}
+					}
+					log.Printf("Created default obstacle with radius %.2f", radius)
+				} else {
+					log.Printf("Created custom obstacle with %d barrier cells (inverted)", barrierCount)
+				}
+			} else {
+				log.Printf("Created custom obstacle with %d barrier cells", barrierCount)
+			}
+
+			// Save the barrier for inspection - use temp directory
+			barrierImagePath := "public/barrier_visualization.png"
+			if err := sim.saveBarrierImage(barrierImagePath); err != nil {
+				log.Printf("Error saving barrier image: %v", err)
+			} else {
+				log.Printf("Barrier visualization saved to %s", barrierImagePath)
+			}
+
+		} else {
+			// Fallback to circle if data is invalid
+			log.Println("Invalid or missing custom obstacle data, using circle instead")
+			sim.config.Obstacle.Type = "circle"
+			sim.initializeBarrier() // Recursively call with updated type
+		}
+
+	default:
+		// Default to circle for unknown types
+		log.Printf("Unknown obstacle type '%s', using circle instead", obstacleType)
+		sim.config.Obstacle.Type = "circle"
+		sim.initializeBarrier() // Recursively call with updated type
+	}
+}
+
+func (sim *CFDSimulation) saveBarrierImage(filename string) error {
+	// Create an image to visualize the barrier
+	width := sim.config.Width
+	height := sim.config.Height
+	xdim := sim.config.XDim
+	ydim := sim.config.YDim
+
+	// Create a new RGBA image
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+
+	// Fill background with dark gray
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			img.Set(x, y, color.RGBA{30, 30, 30, 255})
+		}
+	}
+
+	// Draw barrier cells
+	scaleX := float64(width) / float64(xdim)
+	scaleY := float64(height) / float64(ydim)
+
+	for y := 0; y < ydim; y++ {
+		for x := 0; x < xdim; x++ {
+			if sim.barrier[x][y] {
+				// Calculate pixel coordinates
+				x1 := int(float64(x) * scaleX)
+				y1 := int(float64(y) * scaleY)
+				x2 := int(float64(x+1) * scaleX)
+				y2 := int(float64(y+1) * scaleY)
+
+				// Fill the barrier cell with white
+				for px := x1; px < x2; px++ {
+					for py := y1; py < y2; py++ {
+						if px < width && py < height {
+							img.Set(px, py, color.RGBA{220, 220, 220, 255})
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Create the directory if it doesn't exist
+	dir := filepath.Dir(filename)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Save the image
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	err = png.Encode(f, img)
+	if err != nil {
+		return err
+	}
+	log.Printf("Barrier visualization saved to %s", filename)
+
+	return nil
+}
+
 func (sim *CFDSimulation) reset() {
 	sim.mutex.Lock()
 	defer sim.mutex.Unlock()
@@ -158,20 +520,12 @@ func (sim *CFDSimulation) reset() {
 	ydim := sim.config.YDim
 	velocity := sim.config.Velocity
 
-	// Initialize
+	// Initialize barrier based on obstacle type
+	sim.initializeBarrier()
+
+	// Initialize fluid properties based on barrier
 	for x := 0; x < xdim; x++ {
 		for y := 0; y < ydim; y++ {
-			relx := xdim/2 - x
-			rely := ydim/2 - y
-			r := math.Sqrt(float64(relx*relx + rely*rely))
-
-			minDim := xdim
-			if ydim < xdim {
-				minDim = ydim
-			}
-			sim.barrier[x][y] = (r < float64(minDim)*0.2)
-
-			v := velocity
 			if sim.barrier[x][y] {
 				// Barrier cells get zero densities
 				sim.n0[x][y] = 0
@@ -189,6 +543,7 @@ func (sim *CFDSimulation) reset() {
 				sim.density[x][y] = 0
 			} else {
 				// Initialize fluid with initial velocity
+				v := velocity
 				sim.n0[x][y] = sim.four9ths * (1 - 1.5*v*v)
 				sim.nE[x][y] = sim.one9th * (1 + 3*v + 3*v*v)
 				sim.nW[x][y] = sim.one9th * (1 - 3*v + 3*v*v)
