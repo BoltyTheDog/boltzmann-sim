@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boltzmann CFD Simulator</title>
     <!-- KaTeX for math formulas -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.15.3/katex.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.15.3/katex.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.15.3/contrib/auto-render.min.js"></script>
+    <!-- Updated KaTeX for math formulas -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" integrity="sha512-fHwaWebuwA7NSF5Qg/af4UeDx9XqUpYpOGgubo3yWu+b2IQR4UeQwbb42Ti7gVAjNtVoI/I9TEoYeu9omwcC6g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js" integrity="sha512-LQNxIMR5rXv7o+b1l8+N1EZMfhG7iFZ9HhnbJkTp4zjNr5Wvst75AqUeFDxeRUa7l5vEDyUiAip//r+EFLLCyA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js" integrity="sha512-iWiuBS5nt6r60fCz26Nd0Zqe0nbk1ZTIQbl3Kv7kYsX+yKMUFHzjaH2+AnM6vp2Xs+gNmaBAVWJjSmuPw76Efg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <!-- Google Fonts -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <!-- Custom styles -->
@@ -105,7 +106,7 @@
         .simulation-container {
             position: relative;
             width: 100%;
-            height: 480px;
+            height: 900px;
             background-color: #000000;
             border-radius: 5px;
             display: flex;
@@ -305,13 +306,76 @@
                 flex-shrink: 0;
             }
         }
+ /* Add these styles to your existing CSS */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .video-card {
+            background-color: #262626;
+            border-radius: 5px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .video-container {
+            width: 100%;
+            margin-bottom: 15px;
+            background-color: #0a0a0a;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .video-container video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .video-card h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .video-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .video-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .katex-display {
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 5px 0;
+        }
+
+        .katex-block {
+            margin: 1em 0;
+        }
+
+        .formula-card {
+            padding: 15px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            overflow-x: auto;
+        }
     </style>
 </head>
 <body>
     <header>
         <div class="container">
-            <h1>Boltzmann CFD Simulator</h1>
-            <p>Computational Fluid Dynamics using the Lattice Boltzmann Method</p>
+            <h1>Fluid Mechanics Project</h1>
+            <p>General Ideal Flow simulation and results and Computational Fluid Dynamics using the Lattice Boltzmann Method</p>
+            <p><strong>Bryan Jimenez, Mateu Palomar, David Garcia</strong></p>
         </div>
     </header>
     
@@ -323,8 +387,16 @@
             <a href="#formulas" class="nav-link">Formulas</a>
             <a href="#about" class="nav-link">About</a>
         </nav>
-        
+        <section id="stream_function">
+            
+            <div class="panel">
+                <h2>2D Ideal Fluid Simulation</h2>
+                
+            
+            </div>
+        </section>
         <section id="simulator">
+            
             <div class="panel">
                 <h2>Simulation</h2>
                 
@@ -358,7 +430,7 @@
                             <input type="range" id="width" min="400" max="2400" value="1200" step="100" class="parameter-slider">
                         </div>
                         <div>
-                            <label for="height">Height: <span id="height-value">480</span>px</label>
+                            <label for="height">Height: <span id="height-value">900</span>px</label>
                             <input type="range" id="height" min="200" max="1200" value="480" step="40" class="parameter-slider">
                         </div>
                     </div>
@@ -419,6 +491,32 @@
                                     <img id="obstaclePreview" alt="Obstacle Preview">
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3>Visualization Options</h3>
+                    <div class="parameter-group">
+                        <div>
+                            <label>Fields to Display:</label>
+                            <div style="display: flex; margin-bottom: 15px;">
+                                <label style="margin-right: 15px;">
+                                    <input type="checkbox" id="visualizeVelocity" checked>
+                                    Velocity
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="visualizePressure" checked>
+                                    Pressure
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <label>Display Mode:</label>
+                        <select id="displayMode" class="parameter-select">
+                            <option value="sideBySide">Both Fields (Stacked)</option>
+                            <option value="velocityOnly">Velocity Only</option>
+                            <option value="pressureOnly">Pressure Only</option>
+                        </select>
                         </div>
                     </div>
                 </div>
@@ -548,6 +646,8 @@
         
         <section id="formulas">
             <div class="panel">
+               <section id="formulas">
+            <div class="panel">
                 <h2>Formulas</h2>
                 
                 <div>
@@ -630,6 +730,101 @@
                     </div>
                 </div>
             </div>
+            
+            <div class="panel">
+                <h2>Video Results</h2>
+                <h3>Adimensional Lattice Velocity = 0.1</h3>
+                <h3>Adimensional Viscosity = 0.02</h3>
+                <h3>Re∼240</h3>
+                <div class="video-grid">
+                    <div class="video-card">
+                        <h3>Turbulent Flow Around Cylinder</h3>
+                        <div class="video-container">
+                            <video autoplay loop muted playsinline>
+                                <source src="Cilindro Circulo.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        <p>Simple Cylinder flow, can still see perturbations arise from non-exact geometry.</p>
+                    </div>
+                    
+                    <div class="video-card">
+                        <h3>Sample Car Simulation</h3>
+                        <div class="video-container">
+                            <video autoplay loop muted playsinline>
+                                <source src="Coche.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        <p>Sample rally style car simulation.</p>
+                    </div>
+                    
+                    <div class="video-card">
+                        <h3>Classical Cow Simulation</h3>
+                        <div class="video-container">
+                            <video autoplay loop muted playsinline>
+                                <source src="Vaca.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        <p>Famous Cow gag simulation.</p>
+                    </div>
+                    
+                    <div class="video-card">
+                        <h3>Formula 1 Car Simulation</h3>
+                        <div class="video-container">
+                            <video autoplay loop muted playsinline>
+                                <source src="F1.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        <p>Sample F1 flow around the car.</p>
+                    </div>
+                    <div class="video-card">
+                        <h3>α=0° (NACA-5 Airfoil)</h3>
+                        <div class="video-container">
+                            <video autoplay loop muted playsinline>
+                                <source src="0Deg.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        <p>NACA-5 Airfoil with neutral angle of attack, can see somewhat laminar flow.</p>
+                    </div>
+                    
+                    <div class="video-card">
+                        <h3>α=5° (NACA-5 Airfoil)</h3>
+                        <div class="video-container">
+                            <video autoplay loop muted playsinline>
+                                <source src="5Deg.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        <p>NACA-5 Airfoil with slightly larger angle of attack, can see somewhat laminar flow.</p>
+                    </div>
+                    
+                    <div class="video-card">
+                        <h3>α=10° (NACA-5 Airfoil)</h3>
+                        <div class="video-container">
+                            <video autoplay loop muted playsinline>
+                                <source src="10Deg.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        <p>NACA-5 Airfoil with even larger angle of attack, can start to see separation.</p>
+                    </div>
+                    
+                    <div class="video-card">
+                        <h3>α=30° (NACA-5 Airfoil)</h3>
+                        <div class="video-container">
+                            <video autoplay loop muted playsinline>
+                                <source src="30Deg.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        <p>NACA-5 Airfoil with large angle of attack, we can appreciate the separation characteristic of stalling.</p>
+                    </div>
+                </div>
+            </div>
         </section>
         
         <section id="about">
@@ -637,12 +832,9 @@
                 <h2>About</h2>
                 
                 <p>
-                    This simulator implements the Lattice Boltzmann Method (LBM) for computational fluid dynamics. The backend is powered by Go, and this frontend interface allows for interactive parameter adjustment and visualization.
+                    This simulator implements both the Gauss-Siedel method and the Lattice Boltzmann Method (LBM) for computational fluid dynamics. The backend is powered by Go, and this frontend interface allows for interactive parameter adjustment and visualization.
                 </p>
-                <p>
-                    The simulation creates a circular obstacle in the middle of a flow field and simulates fluid flow around it. The color intensity represents the fluid velocity magnitude.
-                </p>
-                
+            
                 <h3>Implementation Details</h3>
                 <ul>
                     <li>The D2Q9 model with 9 velocity directions is used</li>
@@ -652,13 +844,6 @@
                     <li>Outflow condition on the right</li>
                     <li>Bounce-back boundary condition for the obstacle</li>
                 </ul>
-                <h3>TO-DO</h3>
-                <ul>
-                    <li>Boundary from Image code</li>
-                    <li>Add sources explained and referenced</li>
-                    <li>Add LaTeX rendering</li>
-                </ul>
-                
             </div>
         </section>
         
@@ -669,303 +854,439 @@
     
     <script>
         // Select DOM elements
-    const runButton = document.getElementById('run-button');
-    const downloadButton = document.getElementById('download-button');
-    const simulationGif = document.getElementById('simulation-gif');
-    const loadingIndicator = document.getElementById('loading-indicator');
-    const progressBar = document.getElementById('progress-bar'); 
-    const progressText = document.getElementById('progress-text');
+        const runButton = document.getElementById('run-button');
+        const downloadButton = document.getElementById('download-button');
+        const simulationGif = document.getElementById('simulation-gif');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const progressBar = document.getElementById('progress-bar'); 
+        const progressText = document.getElementById('progress-text');
 
-    // Current parameter values
-    const params = {
-        width: 1200,
-        height: 480,
-        xdim: 600,
-        ydim: 240,
-        velocity: 0.10,
-        viscosity: 0.020,
-        timeStepsPerFrame: 20,
-        totalTimeSteps: 20000,
-        gifDelay: 2,
-        obstacle: {
-            type: 'circle',
-            imageData: null
-        }
-    };
+        const params = {
+            width: 1200,
+            height: 480,
+            xdim: 600,
+            ydim: 240,
+            velocity: 0.10,
+            viscosity: 0.020,
+            timeStepsPerFrame: 20,
+            totalTimeSteps: 20000,
+            gifDelay: 2,
+            obstacle: {
+                type: 'circle',
+                imageData: null
+            },
+            visualizeVelocity: true,
+            visualizePressure: true,
+            sideBySide: true
+        };
 
-    // Default parameter values
-    const defaultParams = { ...params };
+        // Default parameter values
+        const defaultParams = { ...params };
 
-    // API endpoints
-    const API = {
-        simulate: '/api/simulate',
-        progress: '/api/progress',
-        result: '/api/result'
-    };
-     const obstacleTypeSelect = document.getElementById('obstacleType');
-    const customObstacleUpload = document.getElementById('customObstacleUpload');
-    
-    obstacleTypeSelect.addEventListener('change', function() {
-        const selectedType = this.value;
-        params.obstacle.type = selectedType;
+        // API endpoints
+        const API = {
+            simulate: '/api/simulate',
+            progress: '/api/progress',
+            result: '/api/result'
+        };
         
-        // Show/hide custom upload section
-        if (selectedType === 'custom') {
-            customObstacleUpload.style.display = 'block';
-        } else {
-            customObstacleUpload.style.display = 'none';
-        }
-    });
-    
-    // Handle image upload
-    const obstacleImageInput = document.getElementById('obstacleImage');
-    const obstaclePreview = document.getElementById('obstaclePreview');
-    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
-    
-    obstacleImageInput.addEventListener('change', function(e) {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            
-            // Only accept PNG files
-            if (file.type !== 'image/png') {
-                alert('Please upload a PNG file with transparency');
-                return;
-            }
-            
-            // Read the file
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const imageData = event.target.result;
-                params.obstacle.imageData = imageData;
+        // Get DOM elements
+        const obstacleTypeSelect = document.getElementById('obstacleType');
+        const customObstacleUpload = document.getElementById('customObstacleUpload');
+        
+        // Initialize visualization legend
+        const legendElement = document.querySelector('.visualization-legend');
+        if (legendElement) {
+            legendElement.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 20px; width: 100%;">
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div style="font-weight: bold; margin-bottom: 5px;">VELOCITY (Top)</div>
+                    <div style="display: flex; width: 100%; height: 20px; border-radius: 2px; overflow: hidden;">
+                        <div style="background: linear-gradient(to right, #0040a0, #00a0ff); width: 100%; height: 100%;"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; width: 100%; margin-top: 5px;">
+                        <span>Low</span>
+                        <span>High</span>
+                    </div>
+                </div>
                 
-                // Show preview
-                obstaclePreview.src = imageData;
-                imagePreviewContainer.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <div style="font-weight: bold; margin-bottom: 5px;">PRESSURE (Bottom)</div>
+                    <div style="display: flex; width: 100%; height: 20px; border-radius: 2px; overflow: hidden;">
+                        <div style="background: linear-gradient(to right, #400000, #ff4040); width: 100%; height: 100%;"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; width: 100%; margin-top: 5px;">
+                        <span>Low</span>
+                        <span>High</span>
+                    </div>
+                </div>
+            </div>
+            `;
         }
-    });
-
-    // Update display values when sliders change
-    document.querySelectorAll('.parameter-slider').forEach(slider => {
-        const id = slider.id;
-        const valueDisplay = document.getElementById(`${id}-value`);
         
-        slider.addEventListener('input', () => {
-            params[id] = parseFloat(slider.value);
-            valueDisplay.textContent = slider.value;
-        });
-    });
-
-    // Reset to defaults
-    document.getElementById('reset-defaults').addEventListener('click', () => {
-        Object.assign(params, defaultParams);
-        params.obstacle = { ...defaultParams.obstacle };
-        obstacleTypeSelect.value = params.obstacle.type;
-        // Update all sliders and displays
-        for (const [key, value] of Object.entries(params)) {
-            const slider = document.getElementById(key);
-            const display = document.getElementById(`${key}-value`);
+        // Handle obstacle type change
+        obstacleTypeSelect.addEventListener('change', function() {
+            const selectedType = this.value;
+            params.obstacle.type = selectedType;
             
-            if (slider && display) {
-                slider.value = value;
-                display.textContent = value;
-            }
-        }
-         if (params.obstacle.type !== 'custom') {
-            customObstacleUpload.style.display = 'none';
-        }
-        
-        // Clear preview
-        imagePreviewContainer.style.display = 'none';
-        obstaclePreview.src = '';
-    });
-
-    // Navigation highlighting
-    const navLinks = document.querySelectorAll('.nav-link');
-    navLinks.forEach(link => {
-        link.addEventListener('click', () => {
-            navLinks.forEach(l => l.classList.remove('active'));
-            link.classList.add('active');
-        });
-    });
-
-    // Handle scroll to highlight nav links
-    window.addEventListener('scroll', () => {
-        const sections = document.querySelectorAll('section');
-        let currentSection = '';
-        
-        sections.forEach(section => {
-            const sectionTop = section.offsetTop;
-            if (scrollY >= sectionTop - 100) {
-                currentSection = `#${section.id}`;
+            // Show/hide custom upload section
+            if (selectedType === 'custom') {
+                customObstacleUpload.style.display = 'block';
+            } else {
+                customObstacleUpload.style.display = 'none';
             }
         });
-        
-        navLinks.forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('href') === currentSection) {
-                link.classList.add('active');
-            }
-        });
-    });
 
-    // Add smooth scrolling to nav links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
+        // Add event listeners for the visualization controls
+        document.getElementById('visualizeVelocity').addEventListener('change', function() {
+            params.visualizeVelocity = this.checked;
+            updateDisplayMode();
+        });
+
+        document.getElementById('visualizePressure').addEventListener('change', function() {
+            params.visualizePressure = this.checked;
+            updateDisplayMode();
+        });
+
+        document.getElementById('displayMode').addEventListener('change', function() {
+            const mode = this.value;
+            if (mode === 'sideBySide') {
+                params.sideBySide = true;
+                params.visualizeVelocity = true;
+                params.visualizePressure = true;
+                document.getElementById('visualizeVelocity').checked = true;
+                document.getElementById('visualizePressure').checked = true;
+            } else if (mode === 'velocityOnly') {
+                params.sideBySide = false;
+                params.visualizeVelocity = true;
+                params.visualizePressure = false;
+                document.getElementById('visualizeVelocity').checked = true;
+                document.getElementById('visualizePressure').checked = false;
+            } else if (mode === 'pressureOnly') {
+                params.sideBySide = false;
+                params.visualizeVelocity = false;
+                params.visualizePressure = true;
+                document.getElementById('visualizeVelocity').checked = false;
+                document.getElementById('visualizePressure').checked = true;
+            }
+            updateDisplayMode();
+        });
+
+        // Function to keep display mode select in sync with checkboxes
+        function updateDisplayMode() {
+            const velocityChecked = params.visualizeVelocity;
+            const pressureChecked = params.visualizePressure;
             
-            document.querySelector(this.getAttribute('href')).scrollIntoView({
-                behavior: 'smooth'
+            if (velocityChecked && pressureChecked) {
+                document.getElementById('displayMode').value = 'sideBySide';
+                params.sideBySide = true;
+            } else if (velocityChecked && !pressureChecked) {
+                document.getElementById('displayMode').value = 'velocityOnly';
+                params.sideBySide = false;
+            } else if (!velocityChecked && pressureChecked) {
+                document.getElementById('displayMode').value = 'pressureOnly';
+                params.sideBySide = false;
+            } else {
+                // If both unchecked, default to velocity
+                document.getElementById('displayMode').value = 'velocityOnly';
+                params.visualizeVelocity = true;
+                params.visualizePressure = false;
+                params.sideBySide = false;
+                document.getElementById('visualizeVelocity').checked = true;
+            }
+            
+            // Update the description of the visualization
+            updateVisualizationDescription();
+        }
+
+        // Function to update the visualization description based on selected options
+        function updateVisualizationDescription() {
+            const descElement = document.getElementById('visualizationDescription');
+            if (!descElement) return;
+            
+            if (params.visualizeVelocity && params.visualizePressure && params.sideBySide) {
+                descElement.innerHTML = 'Showing <strong>velocity</strong> (top) and <strong>pressure</strong> (bottom) fields.';
+            } else if (params.visualizeVelocity) {
+                descElement.innerHTML = 'Showing <strong>velocity field</strong> only.';
+            } else if (params.visualizePressure) {
+                descElement.innerHTML = 'Showing <strong>pressure field</strong> only.';
+            }
+        }
+        
+        // Handle image upload
+        const obstacleImageInput = document.getElementById('obstacleImage');
+        const obstaclePreview = document.getElementById('obstaclePreview');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        
+        obstacleImageInput.addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                
+                // Only accept PNG files
+                if (file.type !== 'image/png') {
+                    alert('Please upload a PNG file with transparency');
+                    return;
+                }
+                
+                // Read the file
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const imageData = event.target.result;
+                    params.obstacle.imageData = imageData;
+                    
+                    // Show preview
+                    obstaclePreview.src = imageData;
+                    imagePreviewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Update display values when sliders change
+        document.querySelectorAll('.parameter-slider').forEach(slider => {
+            const id = slider.id;
+            const valueDisplay = document.getElementById(`${id}-value`);
+            
+            slider.addEventListener('input', () => {
+                params[id] = parseFloat(slider.value);
+                valueDisplay.textContent = slider.value;
+                
+                // If height slider changes, update simulation container height
+                if (id === 'height') {
+                    document.querySelector('.simulation-container').style.height = `${params.height}px`;
+                }
             });
         });
-    });
 
-    // Check progress at regular intervals
-    function startProgressChecking() {
-        return setInterval(async () => {
-            try {
-                const response = await fetch(API.progress);
-                const data = await response.json();
+        // Reset to defaults
+        document.getElementById('reset-defaults').addEventListener('click', () => {
+            Object.assign(params, defaultParams);
+            params.obstacle = { ...defaultParams.obstacle };
+            obstacleTypeSelect.value = params.obstacle.type;
+            
+            // Update all sliders and displays
+            for (const [key, value] of Object.entries(params)) {
+                const slider = document.getElementById(key);
+                const display = document.getElementById(`${key}-value`);
                 
-                // Update progress bar
-                progressBar.style.width = `${data.percent}%`;
-                progressText.textContent = `${data.percent}%`;
-                
-                // Check if simulation is complete
-                if (data.status === 'complete' && data.percent === 100) {
-                    // Stop checking progress
-                    clearInterval(progressCheckInterval);
-                    
-                    // Load the simulation result
-                    loadingIndicator.style.display = 'none';
-                    simulationGif.src = API.result + '?t=' + new Date().getTime(); // Add timestamp to prevent caching
-                    simulationGif.style.display = 'block';
-                    downloadButton.style.display = 'block';
-                    
-                    runButton.disabled = false;
-                    runButton.textContent = 'Run Simulation';
+                if (slider && display) {
+                    slider.value = value;
+                    display.textContent = value;
                 }
-                
-                // Check if error occurred
-                if (data.status === 'error') {
-                    clearInterval(progressCheckInterval);
-                    
-                    alert('An error occurred during simulation. Please try different parameters.');
-                    
-                    runButton.disabled = false;
-                    runButton.textContent = 'Run Simulation';
-                }
-            } catch (error) {
-                console.error('Error checking progress:', error);
             }
-        }, 500);
-    }
-
-    let progressCheckInterval;
-
-    // Set up event listeners once DOM is fully loaded
-    document.addEventListener('DOMContentLoaded', () => {
-        // Run button event listener
-        runButton.addEventListener('click', async () => {
-            // Start simulation
-            runButton.disabled = true;
-            runButton.textContent = 'Simulating...';
             
-            downloadButton.style.display = 'none';
-            simulationGif.style.display = 'none';
-            loadingIndicator.style.display = 'block';
-            progressBar.style.width = '0%';
-            progressText.textContent = '0%';
+            // Hide custom upload and preview
+            if (params.obstacle.type !== 'custom') {
+                customObstacleUpload.style.display = 'none';
+            }
+            imagePreviewContainer.style.display = 'none';
+            obstaclePreview.src = '';
             
-            try {
-                // Send simulation parameters to server
-                const response = await fetch(API.simulate, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(params)
+            // Reset visualization parameters
+            document.getElementById('visualizeVelocity').checked = params.visualizeVelocity;
+            document.getElementById('visualizePressure').checked = params.visualizePressure;
+            document.getElementById('displayMode').value = params.sideBySide ? 'sideBySide' : 
+                (params.visualizeVelocity ? 'velocityOnly' : 'pressureOnly');
+            
+            updateVisualizationDescription();
+        });
+
+        // Navigation highlighting
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                navLinks.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+            });
+        });
+
+        // Handle scroll to highlight nav links
+        window.addEventListener('scroll', () => {
+            const sections = document.querySelectorAll('section');
+            let currentSection = '';
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 100) {
+                    currentSection = `#${section.id}`;
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === currentSection) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Add smooth scrolling to nav links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
                 });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to start simulation');
-                }
-                
-                const data = await response.json();
-                console.log('Simulation started:', data);
-                
-                // Start checking progress
-                progressCheckInterval = startProgressChecking();
-            } catch (error) {
-                console.error('Error starting simulation:', error);
-                
-                // Fallback to showing pre-computed simulation if API calls fail
-                let progress = 0;
-                const interval = setInterval(() => {
-                    progress += 5;
-                    progressBar.style.width = `${progress}%`;
-                    progressText.textContent = `${progress}%`;
+            });
+        });
+
+        // Check progress at regular intervals
+        function startProgressChecking() {
+            return setInterval(async () => {
+                try {
+                    const response = await fetch(API.progress);
+                    const data = await response.json();
                     
-                    if (progress >= 100) {
-                        clearInterval(interval);
+                    // Update progress bar
+                    progressBar.style.width = `${data.percent}%`;
+                    progressText.textContent = `${data.percent}%`;
+                    
+                    // Check if simulation is complete
+                    if (data.status === 'complete' && data.percent === 100) {
+                        // Stop checking progress
+                        clearInterval(progressCheckInterval);
                         
-                        setTimeout(() => {
-                            loadingIndicator.style.display = 'none';
-                            simulationGif.src = '/cfd_simulation.gif?' + new Date().getTime();
-                            simulationGif.style.display = 'block';
-                            downloadButton.style.display = 'block';
-                            
-                            runButton.disabled = false;
-                            runButton.textContent = 'Run Simulation';
-                        }, 500);
+                        // Load the simulation result
+                        loadingIndicator.style.display = 'none';
+                        simulationGif.src = API.result + '?t=' + new Date().getTime(); // Add timestamp to prevent caching
+                        simulationGif.style.display = 'block';
+                        downloadButton.style.display = 'block';
+                        
+                        runButton.disabled = false;
+                        runButton.textContent = 'Run Simulation';
                     }
-                }, 50);
-            }
-        });
-        
-        // Download button event listener
-        downloadButton.addEventListener('click', () => {
-            // Create a download link
-            const a = document.createElement('a');
-            a.href = simulationGif.src;
-            a.download = 'cfd_simulation.gif';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        });
-        
-        // Render math formulas
-        renderMathInElement(document.body, {
-            delimiters: [
-                {left: '$', right: '$', display: true},
-                {left: ', right: ', display: false}
-            ],
-            throwOnError: false,
-            trust: true,
-            strict: false,
-            macros: {
-                "\\vec": "\\mathbf"
-            }
-        });
-        
-        // Initially try to load the pre-computed simulation when page loads
-        if (window.location.hash === '#simulator' || window.location.hash === '') {
-            setTimeout(() => {
-                simulationGif.src = '/cfd_simulation.gif';
-                simulationGif.onload = function() {
-                    loadingIndicator.style.display = 'none';
-                    simulationGif.style.display = 'block';
-                    downloadButton.style.display = 'block';
-                };
-                
-                // If image fails to load, hide the loading indicator
-                simulationGif.onerror = function() {
-                    loadingIndicator.style.display = 'none';
-                };
+                    
+                    // Check if error occurred
+                    if (data.status === 'error') {
+                        clearInterval(progressCheckInterval);
+                        
+                        alert('An error occurred during simulation. Please try different parameters.');
+                        
+                        runButton.disabled = false;
+                        runButton.textContent = 'Run Simulation';
+                    }
+                } catch (error) {
+                    console.error('Error checking progress:', error);
+                }
             }, 500);
         }
-    });
+
+        let progressCheckInterval;
+
+        // Set up event listeners once DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize the visualization description
+            updateVisualizationDescription();
+            
+            // Run button event listener
+            runButton.addEventListener('click', async () => {
+                // Start simulation
+                runButton.disabled = true;
+                runButton.textContent = 'Simulating...';
+                
+                downloadButton.style.display = 'none';
+                simulationGif.style.display = 'none';
+                loadingIndicator.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressText.textContent = '0%';
+                
+                try {
+                    // Send simulation parameters to server
+                    const response = await fetch(API.simulate, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(params)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to start simulation');
+                    }
+                    
+                    const data = await response.json();
+                    console.log('Simulation started:', data);
+                    
+                    // Start checking progress
+                    progressCheckInterval = startProgressChecking();
+                } catch (error) {
+                    console.error('Error starting simulation:', error);
+                    
+                    // Fallback to showing pre-computed simulation if API calls fail
+                    let progress = 0;
+                    const interval = setInterval(() => {
+                        progress += 5;
+                        progressBar.style.width = `${progress}%`;
+                        progressText.textContent = `${progress}%`;
+                        
+                        if (progress >= 100) {
+                            clearInterval(interval);
+                            
+                            setTimeout(() => {
+                                loadingIndicator.style.display = 'none';
+                                simulationGif.src = '/cfd_simulation.gif?' + new Date().getTime();
+                                simulationGif.style.display = 'block';
+                                downloadButton.style.display = 'block';
+                                
+                                runButton.disabled = false;
+                                runButton.textContent = 'Run Simulation';
+                            }, 500);
+                        }
+                    }, 50);
+                }
+            });
+            
+            // Download button event listener
+            downloadButton.addEventListener('click', () => {
+                // Create a download link
+                const a = document.createElement('a');
+                a.href = simulationGif.src;
+                a.download = 'cfd_simulation.gif';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+            
+            // Initially try to load the pre-computed simulation when page loads
+            if (window.location.hash === '#simulator' || window.location.hash === '') {
+                setTimeout(() => {
+                    simulationGif.src = '/cfd_simulation.gif';
+                    simulationGif.onload = function() {
+                        loadingIndicator.style.display = 'none';
+                        simulationGif.style.display = 'block';
+                        downloadButton.style.display = 'block';
+                    };
+                    
+                    // If image fails to load, hide the loading indicator
+                    simulationGif.onerror = function() {
+                        loadingIndicator.style.display = 'none';
+                    };
+                }, 500);
+            }
+        });
+
+        // Initialize LaTeX rendering when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false,
+                    trust: true,
+                    strict: false,
+                    macros: {
+                        "\\vec": "\\mathbf"
+                    }
+                });
+            } else {
+                console.error('KaTeX auto-render not loaded');
+            }
+        });
     </script>
 </body>
 </html>

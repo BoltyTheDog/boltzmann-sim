@@ -38,6 +38,10 @@ type Config struct {
 
 	// Obstacle configuration
 	Obstacle ObstacleConfig `json:"obstacle"`
+	// Visualization options
+	VisualizeVelocity bool `json:"visualizeVelocity"`
+	VisualizePressure bool `json:"visualizePressure"`
+	SideBySide        bool `json:"sideBySide"`
 }
 
 type ObstacleConfig struct {
@@ -58,6 +62,9 @@ var defaultConfig = Config{
 	Obstacle: ObstacleConfig{
 		Type: "circle",
 	},
+	VisualizeVelocity: true,
+	VisualizePressure: true,
+	SideBySide:        true,
 }
 
 // Output path for the GIF file
@@ -84,6 +91,7 @@ type CFDSimulation struct {
 	four9ths float64
 	one9th   float64
 	one36th  float64
+	pressure [][]float64
 
 	// Simulation state
 	timestep int
@@ -191,6 +199,11 @@ func (sim *CFDSimulation) initArrays() {
 
 	// Initialize barrier array
 	sim.barrier = make([][]bool, xdim)
+
+	sim.pressure = make([][]float64, xdim)
+	for x := 0; x < xdim; x++ {
+		sim.pressure[x] = make([]float64, ydim)
+	}
 
 	// Allocate inner arrays
 	for x := 0; x < xdim; x++ {
@@ -541,6 +554,7 @@ func (sim *CFDSimulation) reset() {
 				sim.yvel[x][y] = 0
 				sim.speed2[x][y] = 0
 				sim.density[x][y] = 0
+				sim.pressure[x][y] = 0
 			} else {
 				// Initialize fluid with initial velocity
 				v := velocity
@@ -557,6 +571,7 @@ func (sim *CFDSimulation) reset() {
 				sim.xvel[x][y] = v
 				sim.yvel[x][y] = 0
 				sim.speed2[x][y] = v * v
+				sim.pressure[x][y] = 1.0 / 3.0 // Initial pressure (c_s^2 * rho)
 			}
 		}
 	}
@@ -603,7 +618,6 @@ func (sim *CFDSimulation) parallelAdvance() {
 	}
 }
 
-// collide performs collision step
 func (sim *CFDSimulation) collide() {
 	xdim := sim.config.XDim
 	ydim := sim.config.YDim
@@ -617,6 +631,7 @@ func (sim *CFDSimulation) collide() {
 				one9thn := sim.one9th * n
 				one36thn := sim.one36th * n
 
+				// Calculate velocity components
 				var vx, vy float64
 				if n > 0 {
 					vx = (sim.nE[x][y] + sim.nNE[x][y] + sim.nSE[x][y] - sim.nW[x][y] - sim.nNW[x][y] - sim.nSW[x][y]) / n
@@ -628,6 +643,7 @@ func (sim *CFDSimulation) collide() {
 				}
 				sim.yvel[x][y] = vy
 
+				// Calculate speed squared
 				vx3 := 3 * vx
 				vy3 := 3 * vy
 				vx2 := vx * vx
@@ -637,6 +653,11 @@ func (sim *CFDSimulation) collide() {
 				sim.speed2[x][y] = v2
 				v215 := 1.5 * v2
 
+				// Calculate pressure (p = c_s^2 * rho in LBM)
+				// c_s^2 = 1/3 in the D2Q9 model
+				sim.pressure[x][y] = n / 3.0
+
+				// Existing collision code...
 				sim.n0[x][y] += omega * (sim.four9ths*n*(1-v215) - sim.n0[x][y])
 				sim.nE[x][y] += omega * (one9thn*(1+vx3+4.5*vx2-v215) - sim.nE[x][y])
 				sim.nW[x][y] += omega * (one9thn*(1-vx3+4.5*vx2-v215) - sim.nW[x][y])
@@ -651,7 +672,6 @@ func (sim *CFDSimulation) collide() {
 	}
 }
 
-// parallelCollide performs collision step using parallel processing
 func (sim *CFDSimulation) parallelCollide() {
 	xdim := sim.config.XDim
 	ydim := sim.config.YDim
@@ -706,6 +726,11 @@ func (sim *CFDSimulation) parallelCollide() {
 						sim.speed2[x][y] = v2
 						v215 := 1.5 * v2
 
+						// Calculate pressure (p = c_s^2 * rho in LBM)
+						// c_s^2 = 1/3 in the D2Q9 model
+						sim.pressure[x][y] = n / 3.0
+
+						// Existing collision code...
 						sim.n0[x][y] += omega * (sim.four9ths*n*(1-v215) - sim.n0[x][y])
 						sim.nE[x][y] += omega * (one9thn*(1+vx3+4.5*vx2-v215) - sim.nE[x][y])
 						sim.nW[x][y] += omega * (one9thn*(1-vx3+4.5*vx2-v215) - sim.nW[x][y])
@@ -858,65 +883,366 @@ func (sim *CFDSimulation) bounce() {
 	}
 }
 
-// createFrame generates a new image frame from current simulation state
+// Updated createFrame function to display velocity and pressure stacked vertically
+// with larger labels
 func (sim *CFDSimulation) createFrame() *image.Paletted {
-	// Create a paletted image for GIF
-	palette := make(color.Palette, 256)
 	width := sim.config.Width
 	height := sim.config.Height
 	xdim := sim.config.XDim
 	ydim := sim.config.YDim
 
-	// Define blue color gradient for fluid speed visualization
+	// Determine if we're showing both visualizations
+	showBoth := sim.config.VisualizeVelocity && sim.config.VisualizePressure && sim.config.SideBySide
+
+	// Create color palette - make sure all entries are initialized
+	palette := make(color.Palette, 256)
+
+	// Initialize all palette entries to avoid nil entries
+	// Default to black for all entries
 	for i := 0; i < 256; i++ {
-		intensity := float64(i) / 255.0
-		// Use blue-based HSV color scheme (similar to the canvas rendering)
+		palette[i] = color.RGBA{0, 0, 0, 255}
+	}
+
+	// Velocity color gradient (blues)
+	for i := 0; i < 120; i++ {
+		intensity := float64(i) / 119.0
 		r := uint8(0)
-		g := uint8(intensity * 170)    // Some green component for contrast
-		b := uint8(64 + intensity*191) // Mainly blue
+		g := uint8(intensity * 170)
+		b := uint8(64 + intensity*191)
 		palette[i] = color.RGBA{r, g, b, 255}
 	}
 
-	// Black for the barrier
+	// Pressure color gradient (reds)
+	for i := 120; i < 240; i++ {
+		intensity := float64(i-120) / 119.0
+		r := uint8(64 + intensity*191)
+		g := uint8(intensity * 80)
+		b := uint8(intensity * 80)
+		palette[i] = color.RGBA{r, g, b, 255}
+	}
+
+	// Reserved colors for labels
+	palette[250] = color.RGBA{255, 255, 255, 255} // White
+	palette[251] = color.RGBA{200, 200, 255, 255} // Light blue
+	palette[252] = color.RGBA{255, 200, 200, 255} // Light red
+
+	// Black for barriers (reused)
 	palette[255] = color.RGBA{0, 0, 0, 255}
 
-	img := image.NewPaletted(image.Rect(0, 0, width, height), palette)
+	// Create the image with the appropriate dimensions
+	var img *image.Paletted
+	if showBoth {
+		// For vertical stacking, double the height instead of the width
+		img = image.NewPaletted(image.Rect(0, 0, width, height*2), palette)
+	} else {
+		img = image.NewPaletted(image.Rect(0, 0, width, height), palette)
+	}
 
-	// Draw simulation to image
+	// Calculate scaling factors
 	scaleX := float64(width) / float64(xdim)
 	scaleY := float64(height) / float64(ydim)
 
+	// Find min/max pressure for normalization
+	minPressure := float64(1000000)
+	maxPressure := float64(-1000000)
+
 	for x := 0; x < xdim; x++ {
 		for y := 0; y < ydim; y++ {
-			// Calculate pixel coordinates
-			x1 := int(float64(x) * scaleX)
-			y1 := int(float64(y) * scaleY)
-			x2 := int(float64(x+1) * scaleX)
-			y2 := int(float64(y+1) * scaleY)
-
-			// Choose color index
-			var colorIdx uint8
-			if sim.barrier[x][y] {
-				colorIdx = 255 // Use black for barriers
-			} else {
-				// Map speed to color (0-254)
-				speed := math.Sqrt(sim.speed2[x][y])
-				intensity := math.Min(speed*3.0, 1.0) // Same scaling as in JS
-				colorIdx = uint8(intensity * 254)
-			}
-
-			// Fill the rectangle
-			for px := x1; px < x2; px++ {
-				for py := y1; py < y2; py++ {
-					if px < width && py < height {
-						img.SetColorIndex(px, py, colorIdx)
-					}
+			if !sim.barrier[x][y] {
+				if sim.pressure[x][y] < minPressure {
+					minPressure = sim.pressure[x][y]
+				}
+				if sim.pressure[x][y] > maxPressure {
+					maxPressure = sim.pressure[x][y]
 				}
 			}
 		}
 	}
 
+	pressureRange := maxPressure - minPressure
+	if pressureRange < 0.0001 {
+		pressureRange = 0.0001 // Avoid division by zero
+	}
+
+	// Draw velocity field (top half or full image)
+	if sim.config.VisualizeVelocity {
+		for x := 0; x < xdim; x++ {
+			for y := 0; y < ydim; y++ {
+				// Calculate pixel coordinates
+				x1 := int(float64(x) * scaleX)
+				y1 := int(float64(y) * scaleY)
+				x2 := int(float64(x+1) * scaleX)
+				y2 := int(float64(y+1) * scaleY)
+
+				// Choose color index
+				var colorIdx uint8
+				if sim.barrier[x][y] {
+					colorIdx = 255 // Use black for barriers
+				} else {
+					// Map speed to color (0-119)
+					speed := math.Sqrt(sim.speed2[x][y])
+					intensity := math.Min(speed*3.0, 1.0)
+					colorIdx = uint8(intensity * 119)
+				}
+
+				// Fill the rectangle
+				for px := x1; px < x2; px++ {
+					for py := y1; py < y2; py++ {
+						if px < width && py < height {
+							img.SetColorIndex(px, py, colorIdx)
+						}
+					}
+				}
+			}
+		}
+
+		// Add label for velocity field - make it larger
+		DrawLargeLabel(img, "VELOCITY", width/2-60, 30, 251)
+	}
+
+	// Draw pressure field (bottom half or full image if only showing pressure)
+	if sim.config.VisualizePressure {
+		var offsetY int
+		if showBoth {
+			offsetY = height // Start after velocity field for vertical stacking
+		} else {
+			offsetY = 0 // Start at top if only showing pressure
+		}
+
+		for x := 0; x < xdim; x++ {
+			for y := 0; y < ydim; y++ {
+				// Calculate pixel coordinates
+				x1 := int(float64(x) * scaleX)
+				y1 := offsetY + int(float64(y)*scaleY)
+				x2 := int(float64(x+1) * scaleX)
+				y2 := offsetY + int(float64(y+1)*scaleY)
+
+				// Choose color index
+				var colorIdx uint8
+				if sim.barrier[x][y] {
+					colorIdx = 255 // Use black for barriers
+				} else {
+					// Normalize pressure to 0-1 range and map to color (120-239)
+					normalizedPressure := (sim.pressure[x][y] - minPressure) / pressureRange
+					colorIdx = uint8(120 + normalizedPressure*119)
+				}
+
+				// Fill the rectangle
+				for px := x1; px < x2; px++ {
+					for py := y1; py < y2; py++ {
+						if px < width && py < (offsetY+height) {
+							img.SetColorIndex(px, py, colorIdx)
+						}
+					}
+				}
+			}
+		}
+
+		// Add label for pressure field - make it larger
+		if showBoth {
+			// If showing both, add to the bottom half
+			DrawLargeLabel(img, "PRESSURE", width/2-60, height+30, 252)
+
+			// Add divider line
+			for x := 0; x < width; x++ {
+				img.SetColorIndex(x, height, 255) // Black divider line
+			}
+		} else {
+			// If only showing pressure, add to the top
+			DrawLargeLabel(img, "PRESSURE", width/2-60, 30, 252)
+		}
+	}
+
 	return img
+}
+
+// Function to draw larger text labels
+func DrawLargeLabel(img *image.Paletted, text string, x, y int, colorIdx uint8) {
+	// Use a larger font size by increasing the scale
+	scale := 2
+	spacing := 12 * scale
+
+	for i, char := range text {
+		posX := x + i*spacing
+
+		// Draw larger characters
+		switch char {
+		case 'V':
+			for j := 0; j < 10*scale; j++ {
+				offset := j * 9 * scale / (10 * scale * 2) // slope for the 'V'
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+offset+k, y+j, colorIdx)
+					img.SetColorIndex(posX+(9*scale-offset)+k, y+j, colorIdx)
+				}
+			}
+		case 'E':
+			for j := 0; j < 10*scale; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+k, y+j, colorIdx)
+				}
+			}
+			for j := 0; j < 3; j++ {
+				for i := 0; i < 8*scale; i++ {
+					for k := 0; k < scale; k++ {
+						img.SetColorIndex(posX+i+scale+k, y+j*5*scale+k, colorIdx)
+					}
+				}
+			}
+		case 'L':
+			for j := 0; j < 10*scale; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+k, y+j, colorIdx)
+				}
+			}
+			for i := 0; i < 8*scale; i++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+i+scale+k, y+9*scale+k, colorIdx)
+				}
+			}
+		case 'O':
+			for j := 0; j < 10*scale; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+k, y+j, colorIdx)
+					img.SetColorIndex(posX+9*scale+k, y+j, colorIdx)
+				}
+			}
+			for i := 0; i < 8*scale; i++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+i+scale+k, y+k, colorIdx)
+					img.SetColorIndex(posX+i+scale+k, y+9*scale+k, colorIdx)
+				}
+			}
+		case 'C':
+			for j := 0; j < 10*scale; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+k, y+j, colorIdx)
+				}
+			}
+			for i := 0; i < 8*scale; i++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+i+scale+k, y+k, colorIdx)
+					img.SetColorIndex(posX+i+scale+k, y+9*scale+k, colorIdx)
+				}
+			}
+		case 'I':
+			for i := 0; i < 10*scale; i++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+i+k, y+k, colorIdx)
+					img.SetColorIndex(posX+i+k, y+9*scale+k, colorIdx)
+				}
+			}
+			for j := 0; j < 10*scale; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+5*scale+k, y+j, colorIdx)
+				}
+			}
+		case 'T':
+			for i := 0; i < 10*scale; i++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+i+k, y+k, colorIdx)
+				}
+			}
+			for j := 0; j < 10*scale; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+5*scale+k, y+j, colorIdx)
+				}
+			}
+		case 'Y':
+			for j := 0; j < 5*scale; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+j+k, y+j, colorIdx)
+					img.SetColorIndex(posX+9*scale-j+k, y+j, colorIdx)
+				}
+			}
+			for j := 5 * scale; j < 10*scale; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+5*scale+k, y+j, colorIdx)
+				}
+			}
+		case 'P':
+			for j := 0; j < 10*scale; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+k, y+j, colorIdx)
+				}
+			}
+			for i := 0; i < 8*scale; i++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+i+scale+k, y+k, colorIdx)
+					img.SetColorIndex(posX+i+scale+k, y+5*scale+k, colorIdx)
+				}
+			}
+			for j := 1; j < 5; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+9*scale+k, y+j*scale, colorIdx)
+				}
+			}
+		case 'R':
+			for j := 0; j < 10*scale; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+k, y+j, colorIdx)
+				}
+			}
+			for i := 0; i < 8*scale; i++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+i+scale+k, y+k, colorIdx)
+					img.SetColorIndex(posX+i+scale+k, y+5*scale+k, colorIdx)
+				}
+			}
+			for j := 1; j < 5; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+9*scale+k, y+j*scale, colorIdx)
+				}
+			}
+			for j := 5; j < 10; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+(j-5)*scale+scale+k, y+j*scale, colorIdx)
+				}
+			}
+		case 'S':
+			for i := 0; i < 9*scale; i++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+i+k, y+k, colorIdx)
+					img.SetColorIndex(posX+i+k, y+5*scale+k, colorIdx)
+					img.SetColorIndex(posX+i+k, y+9*scale+k, colorIdx)
+				}
+			}
+			for j := 1; j < 5; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+k, y+j*scale, colorIdx)
+				}
+			}
+			for j := 6; j < 9; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+9*scale+k, y+j*scale, colorIdx)
+				}
+			}
+		case 'U':
+			for j := 0; j < 9*scale; j++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+k, y+j, colorIdx)
+					img.SetColorIndex(posX+9*scale+k, y+j, colorIdx)
+				}
+			}
+			for i := 0; i < 8*scale; i++ {
+				for k := 0; k < scale; k++ {
+					img.SetColorIndex(posX+i+scale+k, y+9*scale+k, colorIdx)
+				}
+			}
+		case ' ':
+			// Do nothing for space
+		default:
+			// Draw a simple rectangle for unknown characters
+			for i := 0; i < 8*scale; i++ {
+				for j := 0; j < 8*scale; j++ {
+					for k := 0; k < scale; k++ {
+						if i == 0 || i == 8*scale-1 || j == 0 || j == 8*scale-1 {
+							img.SetColorIndex(posX+i+k, y+j+k, colorIdx)
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 // saveGIF saves the accumulated frames as a GIF file
@@ -939,15 +1265,16 @@ func (sim *CFDSimulation) saveGIF(filename string) error {
 	})
 }
 
-// SimulationData represents the data sent to the frontend
 type SimulationData struct {
-	Speed2  [][]float64 `json:"speed2"`
-	Barrier [][]bool    `json:"barrier"`
-	Width   int         `json:"width"`
-	Height  int         `json:"height"`
-	XDim    int         `json:"xdim"`
-	YDim    int         `json:"ydim"`
-	GifPath string      `json:"gifPath"`
+	Speed2            [][]float64 `json:"speed2"`
+	Pressure          [][]float64 `json:"pressure"`
+	Barrier           [][]bool    `json:"barrier"`
+	Width             int         `json:"width"`
+	Height            int         `json:"height"`
+	XDim              int         `json:"xdim"`
+	YDim              int         `json:"ydim"`
+	GifPath           string      `json:"gifPath"`
+	VisualizationType string      `json:"visualizationType"`
 }
 
 // runAndSaveSimulation runs the simulation with the specified configuration

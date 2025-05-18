@@ -180,7 +180,10 @@ app.post('/api/simulate', async (req, res) => {
     timeStepsPerFrame,
     totalTimeSteps,
     gifDelay,
-    obstacle
+    obstacle,
+    visualizeVelocity,
+    visualizePressure,
+    sideBySide
   } = req.body;
   
   // Already running?
@@ -228,15 +231,6 @@ app.post('/api/simulate', async (req, res) => {
         
         obstacleConfig.data = processedObstacle.obstacleData;
         console.log(`Processed custom obstacle: ${processedObstacle.width}x${processedObstacle.height}`);
-        
-        // If obstacle is large, log a warning
-        const totalCells = processedObstacle.width * processedObstacle.height;
-        if (totalCells > 40000) { // 200x200
-          console.log(`Warning: Large obstacle with ${totalCells} cells might affect performance`);
-        }
-        
-        // Log obstacle data dimensions for debugging
-        console.log(`Obstacle data dimensions: ${obstacleConfig.data.length}x${obstacleConfig.data[0].length}`);
       } else {
         console.error("Failed to generate valid obstacle data, falling back to circle");
         obstacleConfig.type = 'circle'; // Fall back to circle
@@ -247,7 +241,7 @@ app.post('/api/simulate', async (req, res) => {
       obstacleConfig.type = 'circle';
     }
     
-    // Create temporary configuration file
+    // Create temporary configuration file with visualization options
     const configPath = path.join(__dirname, 'temp_config.json');
     const configData = {
       width,
@@ -259,8 +253,14 @@ app.post('/api/simulate', async (req, res) => {
       timeStepsPerFrame,
       totalTimeSteps,
       gifDelay,
-      obstacle: obstacleConfig
+      obstacle: obstacleConfig,
+      visualizeVelocity: visualizeVelocity !== false, // Default to true if not specified
+      visualizePressure: visualizePressure !== false, // Default to true if not specified
+      sideBySide: sideBySide !== false // Default to true if not specified
     };
+    
+    // Log visualization options for debugging
+    console.log(`Visualization options: velocity=${configData.visualizeVelocity}, pressure=${configData.visualizePressure}, sideBySide=${configData.sideBySide}`);
     
     // Save config to file with pretty printing for readability
     fs.writeFileSync(configPath, JSON.stringify(configData, null, 2));
