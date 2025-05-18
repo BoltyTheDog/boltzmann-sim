@@ -7,4 +7,11 @@
   "viscosity": 0.02,
   "timeStepsPerFrame": 20,
   "totalTimeSteps": 20000,
+  "gifDelay": 2,
+  "obstacle": {
+    "type": "circle"
+  },
+  "visualizeVelocity": true,
+  "visualizePressure": true,
+  "sideBySide": true
 }

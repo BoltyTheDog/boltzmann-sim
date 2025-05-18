@@ -1,6 +1,6 @@
 [build]
   publish = "public"
-  command = "npm install && go build -o cfd_simulator main.go && mkdir -p public && ./cfd_simulator -config=default_config.json"
+  command = "npm install && echo '{\"width\":1200,\"height\":480,\"xdim\":600,\"ydim\":240,\"velocity\":0.1,\"viscosity\":0.02,\"timeStepsPerFrame\":20,\"totalTimeSteps\":20000,\"gifDelay\":2,\"obstacle\":{\"type\":\"circle\"},\"visualizeVelocity\":true,\"visualizePressure\":true,\"sideBySide\":true}' > default_config.json && go build -o cfd_simulator main.go && mkdir -p public && ./cfd_simulator -config=default_config.json"
   
 [build.environment]
   NODE_VERSION = "18"
