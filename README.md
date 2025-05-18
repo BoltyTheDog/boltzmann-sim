@@ -2,18 +2,6 @@
 
 A professional web-based Computational Fluid Dynamics simulator using the Lattice Boltzmann Method to simulate fluid flows.
 
-![Boltzmann CFD Simulator](https://placeholder-for-screenshot.com/screenshot.png)
-
-## Features
-
-- Sleek, professional UI with dark gradient theme
-- Interactive parameter controls with real-time feedback
-- Parallel computation using Go for high-performance simulation
-- Real-time progress tracking and notifications
-- GIF generation for fluid flow visualization
-- Educational sections explaining the theory with mathematical formulas
-- Responsive design that works on desktop and mobile devices
-
 ## Requirements
 
 - Go 1.18 or higher
@@ -83,23 +71,6 @@ The simulator allows adjustment of the following parameters:
   - Total Time Steps: Total length of the simulation
   - GIF Delay: Frame delay in the output GIF
 
-## UI Features
-
-- Dark gradient theme with professional styling
-- Interactive sliders with tooltips for parameter adjustment
-- Real-time progress tracking with animated progress bar
-- Notification system for simulation events
-- Responsive layout that adapts to different screen sizes
-- Mathematical formulas rendered with KaTeX
-- Smooth scrolling navigation
-
-## Deployment
-
-This project is ready to deploy to Netlify:
-
-1. Push your code to a GitHub repository
-2. Connect your repository to Netlify
-3. Netlify will automatically build and deploy the site using the provided `netlify.toml` configuration
 
 ## How It Works
 
